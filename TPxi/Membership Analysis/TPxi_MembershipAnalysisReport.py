@@ -1,36 +1,7 @@
 #roles=Edit
 
-#####################################################################
-# TPxi Membership Analysis Report - 10 Year Trends
-#####################################################################
-# Purpose: Comprehensive analysis of church membership trends over 10 years
-# for leadership to understand growth patterns, demographics shifts,
-# attendance behaviors, and member engagement pathways
-#
-# Features:
-# 1. 10-year membership growth trends with yearly breakdowns
-# 2. Age demographics evolution over time
-# 3. Connection pathways analysis (how people found the church)
-# 4. Attendance patterns before/after membership
-# 5. Family unit analysis and trends
-# 6. Retention and attrition metrics
-# 7. Campus-specific breakdowns (if multi-campus)
-# 8. Interactive charts and visualizations
-#
-# Upload Instructions:
-# 1. Admin > Advanced > Special Content > Python
-# 2. New Python Script File
-# 3. Name: TPxi_MembershipAnalysisReport
-# 4. Run manually or schedule quarterly/annually
-#
-# Configuration: Update all settings below for your church
-#
-# Note: This report uses the current Age field instead of BirthDate
-# for age calculations, which provides an approximation of age groups
-#####################################################################
-
-#written by: Ben Swaby
-#email:bswaby@fbchtn.org
+# Written By: Ben Swaby
+# Email: bswaby@fbchtn.org
 # GitHub:  https://github.com/bswaby/Touchpoint
 # ---------------------------------------------------------------
 # Support: These tools are free because they should be. If they've
@@ -39,79 +10,720 @@
 #          https://displaycache.com
 # ---------------------------------------------------------------
 
-# ===== CONFIGURATION SECTION =====
-# Place all configuration at the top for easy customization
-class Config:
-    # Report settings
-    YEARS_TO_ANALYZE = 5  # Number of years to look back for main analysis (default: 5)
-    COHORT_YEARS_TO_ANALYZE = 10  # Number of years for cohort retention analysis (default: 10)
-    REPORT_TITLE = "Church Membership Analysis Report"
-    
-    # Fiscal Year Settings
-    FISCAL_YEAR_START_MONTH = 10  # October = 10, January = 1, etc.
-    FISCAL_YEAR_START_DAY = 1     # Day of month fiscal year starts
-    USE_FISCAL_YEAR = True        # Set to False to use calendar year
-    
-    # Member status configuration
-    MEMBER_STATUS_ID = 10  # Typically 10 = Member
-    PREVIOUS_MEMBER_STATUS_ID = 40  # Typically 40 = Previous Member
-    PROSPECT_STATUS_ID = 20  # Typically 20 = Prospect
-    GUEST_STATUS_ID = 30  # Typically 30 = Guest
-    
-    # Age group definitions
-    # Note: Uses current age, not age at joining (BirthDate field not available)
-    AGE_GROUPS = [
-        ("Children", 0, 12),
-        ("Teens", 13, 17),
-        ("Young Adults", 18, 29),
-        ("Adults", 30, 49),
-        ("Mature Adults", 50, 64),
-        ("Seniors", 65, 150)
-    ]
-    
-    # Attendance tracking
-    # Note: For worship, we use MaxCount (total attendance) from Meetings table
-    # MaxCount typically holds the total count, HeadCount is used as fallback
-    # For Connect Groups, we track individual attendance records (AttendanceFlag = 1)
-    PRIMARY_WORSHIP_PROGRAM_ID = 1124  # Main worship service program ID (updated)
-    PRIMARY_WORSHIP_PROGRAM_NAME = "Worship"
-    SMALL_GROUP_PROGRAM_ID = 1128  # Small groups/Connect groups program ID
-    SMALL_GROUP_PROGRAM_NAME = "Connect Groups"
-    
-    # Campus settings (0 = all campuses)
-    CAMPUS_ID = 0  # Set to specific campus ID to filter, or 0 for all
-    
-    # Display settings
-    SHOW_CAMPUS_BREAKDOWN = False  # Show campus-specific analysis (set to False if no Campus table)
-    SHOW_ORIGIN_ANALYSIS = False  # Show how people found the church (set to False if no Origin table)
-    SHOW_RETENTION_METRICS = True  # Show retention/attrition analysis
-    SHOW_FAMILY_ANALYSIS = True  # Show family unit trends
-    SHOW_ATTENDANCE_IMPACT = True  # Show member engagement analysis (individual attendance patterns)
-    
-    # Chart colors (for consistency)
-    CHART_COLORS = [
-        "#667eea",  # Purple
-        "#48bb78",  # Green
-        "#ed8936",  # Orange
-        "#e53e3e",  # Red
-        "#38b2ac",  # Teal
-        "#805ad5",  # Violet
-        "#d69e2e",  # Yellow
-        "#3182ce",  # Blue
-    ]
-    
-    # Export settings
-    ENABLE_EXPORT = True  # Allow data export to CSV
-    
-    # Performance settings
-    USE_CACHING = True  # Cache expensive queries
-    CACHE_DURATION = 60  # Cache duration in minutes
 
-# Set page header
-model.Header = Config.REPORT_TITLE
+#####################################################################
+# TPxi Membership Analysis Report  v2.0
+#####################################################################
+#
+# SETUP (paste and go):
+#   1. Admin > Advanced > Special Content > Python
+#   2. Create new script: TPxi_MembershipAnalysisReport
+#   3. Paste this entire file and save
+#   4. Navigate to /PyScriptForm/TPxi_MembershipAnalysisReport
+#   5. Configure settings (gear icon), then Run Report
+#
+# URLs:
+#   Report:   /PyScriptForm/TPxi_MembershipAnalysisReport
+#   Settings: /PyScriptForm/TPxi_MembershipAnalysisReport?settings=1
+#
+# CHANGELOG:
+#   v2.0 - 2026-03-16
+#     - Routing overhaul: report is the default view, settings via ?settings=1
+#     - Campus selector dropdown in report header for inline switching
+#     - Campus filtering applied to all data queries
+#     - WITH (NOLOCK) added to all People and ChangeLog queries
+#     - YoY delta indicators on yearly membership trends table
+#     - Status Transitions section (members gained/lost/returned per year)
+#     - Lapsed Members section (high-level annual attrition tracking)
+#     - Fiscal year support: toggle fiscal vs calendar year with custom start month/day
+#     - Removed CSV/Excel export feature
+#     - Removed dead code (safe_int, unused caching config)
+#     - Stdout capture to render report inside TouchPoint page frame
+#   v1.0 - Initial release
+#     - Membership growth trends by year
+#     - Age demographics evolution
+#     - Retention / attrition cohort analysis
+#     - Attendance impact (before/after membership)
+#     - Family unit analysis
+#     - Baptism age-bin breakdown with drilldown
+#     - Campus-specific breakdowns (optional)
+#     - Connection pathway analysis (optional)
+#     - All settings configurable via UI (no code edits)
+#
+#####################################################################
+
+import json
+import sys
+from StringIO import StringIO
+
+# ============================================================
+# CONFIGURATION STORAGE
+# ============================================================
+CONTENT_KEY = "MembershipAnalysisReport_Config"
+TITLE = "Membership Analysis Report"
+CSS_PREFIX = "mar"
+
+# ============================================================
+# DEFAULT CONFIG VALUES
+# ============================================================
+DEFAULTS = {
+    'reportTitle': 'Church Membership Analysis Report',
+    'yearsToAnalyze': 5,
+    'cohortYearsToAnalyze': 10,
+    'fiscalYearStartMonth': 10,
+    'fiscalYearStartDay': 1,
+    'useFiscalYear': True,
+    'memberStatusId': 10,
+    'previousMemberStatusId': 40,
+    'prospectStatusId': 20,
+    'guestStatusId': 30,
+    'primaryWorshipProgramId': 1124,
+    'primaryWorshipProgramName': 'Worship',
+    'smallGroupProgramId': 1128,
+    'smallGroupProgramName': 'Connect Groups',
+    'campusId': 0,
+    'showCampusBreakdown': False,
+    'showOriginAnalysis': False,
+    'showRetentionMetrics': True,
+    'showFamilyAnalysis': True,
+    'showAttendanceImpact': True,
+    'showBaptismAnalysis': True,
+    'showStatusTransitions': True,
+    'showLapsedMembers': True,
+}
+
+# ============================================================
+# CONFIG LOAD / SAVE
+# ============================================================
+def load_config():
+    try:
+        content = model.TextContent(CONTENT_KEY)
+        if content:
+            return json.loads(content)
+    except:
+        pass
+    return {}
+
+def save_config(cfg):
+    model.WriteContentText(CONTENT_KEY, json.dumps(cfg, indent=2), "")
+
+def get_cfg(key):
+    """Get a config value with fallback to defaults"""
+    return _active_config.get(key, DEFAULTS.get(key))
+
+# Load once at module level
+_active_config = load_config()
+
+# ============================================================
+# CONFIG BRIDGE: maps new config keys to old Config class
+# ============================================================
+class Config:
+    """Bridge class - reads from stored config instead of hardcoded values"""
+    @property
+    def YEARS_TO_ANALYZE(self):
+        return int(get_cfg('yearsToAnalyze'))
+    @property
+    def COHORT_YEARS_TO_ANALYZE(self):
+        return int(get_cfg('cohortYearsToAnalyze'))
+    @property
+    def REPORT_TITLE(self):
+        return get_cfg('reportTitle')
+    @property
+    def FISCAL_YEAR_START_MONTH(self):
+        return int(get_cfg('fiscalYearStartMonth'))
+    @property
+    def FISCAL_YEAR_START_DAY(self):
+        return int(get_cfg('fiscalYearStartDay'))
+    @property
+    def USE_FISCAL_YEAR(self):
+        return bool(get_cfg('useFiscalYear'))
+    @property
+    def MEMBER_STATUS_ID(self):
+        return int(get_cfg('memberStatusId'))
+    @property
+    def PREVIOUS_MEMBER_STATUS_ID(self):
+        return int(get_cfg('previousMemberStatusId'))
+    @property
+    def PROSPECT_STATUS_ID(self):
+        return int(get_cfg('prospectStatusId'))
+    @property
+    def GUEST_STATUS_ID(self):
+        return int(get_cfg('guestStatusId'))
+    @property
+    def AGE_GROUPS(self):
+        return [
+            ("Children", 0, 12),
+            ("Teens", 13, 17),
+            ("Young Adults", 18, 29),
+            ("Adults", 30, 49),
+            ("Mature Adults", 50, 64),
+            ("Seniors", 65, 150)
+        ]
+    @property
+    def PRIMARY_WORSHIP_PROGRAM_ID(self):
+        return int(get_cfg('primaryWorshipProgramId'))
+    @property
+    def PRIMARY_WORSHIP_PROGRAM_NAME(self):
+        return get_cfg('primaryWorshipProgramName')
+    @property
+    def SMALL_GROUP_PROGRAM_ID(self):
+        return int(get_cfg('smallGroupProgramId'))
+    @property
+    def SMALL_GROUP_PROGRAM_NAME(self):
+        return get_cfg('smallGroupProgramName')
+    @property
+    def CAMPUS_ID(self):
+        return int(get_cfg('campusId'))
+    @property
+    def SHOW_CAMPUS_BREAKDOWN(self):
+        return bool(get_cfg('showCampusBreakdown'))
+    @property
+    def SHOW_ORIGIN_ANALYSIS(self):
+        return bool(get_cfg('showOriginAnalysis'))
+    @property
+    def SHOW_RETENTION_METRICS(self):
+        return bool(get_cfg('showRetentionMetrics'))
+    @property
+    def SHOW_FAMILY_ANALYSIS(self):
+        return bool(get_cfg('showFamilyAnalysis'))
+    @property
+    def SHOW_ATTENDANCE_IMPACT(self):
+        return bool(get_cfg('showAttendanceImpact'))
+    @property
+    def SHOW_BAPTISM_ANALYSIS(self):
+        return bool(get_cfg('showBaptismAnalysis'))
+    @property
+    def BAPTISM_AGE_BINS(self):
+        return [
+            ("Preschool (0-4)", 0, 4),
+            ("Children (5-9)", 5, 9),
+            ("Preteen (10-11)", 10, 11),
+            ("Middle School (12-14)", 12, 14),
+            ("High School (15-18)", 15, 18),
+            ("19-29", 19, 29),
+            ("30-39", 30, 39),
+            ("40-49", 40, 49),
+            ("50-59", 50, 59),
+            ("60-69", 60, 69),
+            ("70-79", 70, 79),
+            ("80+", 80, 150)
+        ]
+    @property
+    def CHART_COLORS(self):
+        return [
+            "#667eea", "#48bb78", "#ed8936", "#e53e3e",
+            "#38b2ac", "#805ad5", "#d69e2e", "#3182ce",
+        ]
+    @property
+    def SHOW_STATUS_TRANSITIONS(self):
+        return bool(get_cfg('showStatusTransitions'))
+    @property
+    def SHOW_LAPSED_MEMBERS(self):
+        return bool(get_cfg('showLapsedMembers'))
+
+Config = Config()
+
+# ============================================================
+# UTILITY FUNCTIONS
+# ============================================================
+def get_form_data(attr_name, default_value):
+    try:
+        value = getattr(model.Data, attr_name, None)
+        if value is None or str(value).strip() == '':
+            return default_value
+        return str(value).strip()
+    except:
+        return default_value
+
+
+# ============================================================
+# AJAX HANDLERS
+# ============================================================
+def handle_ajax():
+    action = get_form_data('action', '')
+    response = {'success': False, 'message': 'Unknown action'}
+
+    try:
+        if action == 'load_config':
+            cfg = load_config()
+            merged = dict(DEFAULTS)
+            merged.update(cfg)
+            response = {'success': True, 'config': merged}
+
+        elif action == 'save_config':
+            config_json = get_form_data('config_data', '{}')
+            cfg = json.loads(config_json)
+            cfg['_saved'] = True
+            save_config(cfg)
+            global _active_config
+            _active_config = cfg
+            response = {'success': True, 'message': 'Configuration saved'}
+
+        elif action == 'get_campuses':
+            sql = """
+                SELECT c.Id, c.Description
+                FROM lookup.Campus c
+                WHERE c.Id > 0
+                ORDER BY c.Description
+            """
+            campuses = [{'id': 0, 'name': 'All Campuses'}]
+            try:
+                for row in q.QuerySql(sql):
+                    campuses.append({
+                        'id': row.Id,
+                        'name': str(row.Description) if row.Description else 'Campus ' + str(row.Id)
+                    })
+            except:
+                pass
+            response = {'success': True, 'campuses': campuses}
+
+        elif action == 'get_programs':
+            sql = """
+                SELECT p.Id, p.Name
+                FROM Program p
+                ORDER BY p.Name
+            """
+            programs = []
+            try:
+                for row in q.QuerySql(sql):
+                    programs.append({
+                        'id': row.Id,
+                        'name': str(row.Name) if row.Name else 'Program ' + str(row.Id)
+                    })
+            except:
+                pass
+            response = {'success': True, 'programs': programs}
+
+    except Exception as e:
+        response = {'success': False, 'message': str(e)}
+
+    print json.dumps(response)
+
+
+# ============================================================
+# CONFIG UI
+# ============================================================
+def generate_ui():
+    return '''
+<style>
+.mar-container { font-family: 'Segoe UI', Tahoma, sans-serif; max-width: 900px; margin: 0 auto; }
+.mar-card { background: #fff; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 16px; }
+.mar-card-header { background: #f8f9fa; padding: 12px 20px; border-bottom: 1px solid #ddd; border-radius: 6px 6px 0 0; font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+.mar-card-body { padding: 16px 20px; }
+.mar-btn { display: inline-block; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; text-decoration: none; }
+.mar-btn-primary { background: #3498db; color: #fff; }
+.mar-btn-primary:hover { background: #2980b9; }
+.mar-btn-success { background: #27ae60; color: #fff; }
+.mar-btn-success:hover { background: #219a52; }
+.mar-btn-outline { background: #fff; color: #333; border: 1px solid #ccc; }
+.mar-btn-outline:hover { background: #f0f0f0; }
+.mar-form-group { margin-bottom: 14px; }
+.mar-form-group label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; color: #555; }
+.mar-input, .mar-select { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; box-sizing: border-box; }
+.mar-input:focus, .mar-select:focus { border-color: #3498db; outline: none; box-shadow: 0 0 0 2px rgba(52,152,219,0.15); }
+.mar-row { display: flex; gap: 16px; flex-wrap: wrap; }
+.mar-col-half { flex: 1; min-width: 280px; }
+.mar-col-third { flex: 1; min-width: 180px; }
+.mar-section-title { font-weight: 600; font-size: 14px; margin: 20px 0 10px 0; padding-bottom: 6px; border-bottom: 1px solid #eee; color: #333; }
+.mar-checkbox-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; }
+.mar-checkbox-row label { font-weight: normal; cursor: pointer; margin: 0; }
+.mar-status { padding: 8px 12px; border-radius: 4px; font-size: 13px; margin-top: 10px; display: none; }
+.mar-status-success { background: #d5f5e3; color: #27ae60; border: 1px solid #27ae60; }
+.mar-status-error { background: #fadbd8; color: #e74c3c; border: 1px solid #e74c3c; }
+.mar-help { font-size: 11px; color: #999; margin-top: 2px; }
+.mar-welcome { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; border-radius: 6px; padding: 20px 24px; margin-bottom: 16px; }
+.mar-welcome h3 { margin: 0 0 8px 0; font-size: 18px; color: #fff; border: none; padding: 0; }
+.mar-welcome p { margin: 0 0 6px 0; font-size: 13px; opacity: 0.95; line-height: 1.5; }
+.mar-welcome ol { margin: 8px 0 0 0; padding-left: 20px; font-size: 13px; line-height: 1.8; }
+.mar-welcome code { background: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+</style>
+
+<div class="mar-container" id="marApp">
+
+    <!-- Welcome / Quick Start (hidden once configured) -->
+    <div class="mar-welcome" id="marWelcome" style="display:none;">
+        <h3>Welcome to Membership Analysis Report</h3>
+        <p>This report analyzes membership trends, demographics, retention, attendance, and more.</p>
+        <p><strong>Quick Start:</strong></p>
+        <ol>
+            <li>Select your <strong>Worship Program</strong> and <strong>Small Group Program</strong> below (required for attendance charts)</li>
+            <li>Adjust Fiscal Year settings if your church uses a non-calendar fiscal year</li>
+            <li>Toggle report sections on/off as needed</li>
+            <li>Click <strong>Save Settings</strong>, then <strong>Run Report</strong></li>
+        </ol>
+        <p style="margin-top:10px;opacity:0.8;">Settings are saved to your TouchPoint instance and persist across sessions. Other settings have sensible defaults and work out of the box.</p>
+    </div>
+
+    <div class="mar-card">
+        <div class="mar-card-header">
+            <span>Report Configuration</span>
+            <div style="display:flex;gap:8px;">
+                <button class="mar-btn mar-btn-success" onclick="marRunReport()">Run Report</button>
+                <button class="mar-btn mar-btn-primary" onclick="marSaveConfig()">Save Settings</button>
+            </div>
+        </div>
+        <div class="mar-card-body">
+
+            <div id="marStatus" class="mar-status"></div>
+
+            <!-- General Settings -->
+            <div class="mar-section-title">General Settings</div>
+
+            <div class="mar-form-group">
+                <label>Report Title</label>
+                <input class="mar-input" id="marReportTitle" placeholder="Church Membership Analysis Report">
+            </div>
+
+            <div class="mar-row">
+                <div class="mar-col-half">
+                    <div class="mar-form-group">
+                        <label>Years to Analyze (Main)</label>
+                        <input class="mar-input" id="marYearsToAnalyze" type="number" min="1" max="20" value="5">
+                        <div class="mar-help">Number of years for main trend analysis</div>
+                    </div>
+                </div>
+                <div class="mar-col-half">
+                    <div class="mar-form-group">
+                        <label>Years to Analyze (Cohort Retention)</label>
+                        <input class="mar-input" id="marCohortYears" type="number" min="1" max="20" value="10">
+                        <div class="mar-help">Longer timeframe for retention cohort analysis</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Fiscal Year Settings -->
+            <div class="mar-section-title">Fiscal Year Settings</div>
+
+            <div class="mar-row">
+                <div class="mar-col-third">
+                    <div class="mar-form-group">
+                        <label>Use Fiscal Year</label>
+                        <select class="mar-select" id="marUseFiscalYear">
+                            <option value="true">Yes - Fiscal Year</option>
+                            <option value="false">No - Calendar Year</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mar-col-third">
+                    <div class="mar-form-group">
+                        <label>FY Start Month</label>
+                        <select class="mar-select" id="marFYStartMonth">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mar-col-third">
+                    <div class="mar-form-group">
+                        <label>FY Start Day</label>
+                        <input class="mar-input" id="marFYStartDay" type="number" min="1" max="28" value="1">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Campus Selection -->
+            <div class="mar-section-title">Campus Selection</div>
+
+            <div class="mar-form-group">
+                <label>Campus</label>
+                <select class="mar-select" id="marCampus">
+                    <option value="0">All Campuses</option>
+                </select>
+                <div class="mar-help">Select a specific campus or All Campuses for the full report</div>
+            </div>
+
+            <!-- Program IDs -->
+            <div class="mar-section-title">Program Configuration</div>
+
+            <div class="mar-row">
+                <div class="mar-col-half">
+                    <div class="mar-form-group">
+                        <label>Worship Program</label>
+                        <select class="mar-select" id="marWorshipProgram"></select>
+                        <div class="mar-help">Program used for worship headcount data</div>
+                    </div>
+                </div>
+                <div class="mar-col-half">
+                    <div class="mar-form-group">
+                        <label>Worship Program Display Name</label>
+                        <input class="mar-input" id="marWorshipName" value="Worship">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mar-row">
+                <div class="mar-col-half">
+                    <div class="mar-form-group">
+                        <label>Small Group / Connect Group Program</label>
+                        <select class="mar-select" id="marSmallGroupProgram"></select>
+                        <div class="mar-help">Program used for small group attendance tracking</div>
+                    </div>
+                </div>
+                <div class="mar-col-half">
+                    <div class="mar-form-group">
+                        <label>Small Group Display Name</label>
+                        <input class="mar-input" id="marSmallGroupName" value="Connect Groups">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Sections -->
+            <div class="mar-section-title">Report Sections</div>
+            <div class="mar-help" style="margin-bottom:10px;">Toggle which sections appear in the report</div>
+
+            <div class="mar-checkbox-row">
+                <input type="checkbox" id="marShowCampusBreakdown">
+                <label for="marShowCampusBreakdown">Campus Breakdown (multi-campus analysis)</label>
+            </div>
+            <div class="mar-checkbox-row">
+                <input type="checkbox" id="marShowOriginAnalysis">
+                <label for="marShowOriginAnalysis">Origin Analysis (how people found the church)</label>
+            </div>
+            <div class="mar-checkbox-row">
+                <input type="checkbox" id="marShowRetentionMetrics" checked>
+                <label for="marShowRetentionMetrics">Retention Metrics (cohort retention rates)</label>
+            </div>
+            <div class="mar-checkbox-row">
+                <input type="checkbox" id="marShowFamilyAnalysis" checked>
+                <label for="marShowFamilyAnalysis">Family Analysis (family unit trends)</label>
+            </div>
+            <div class="mar-checkbox-row">
+                <input type="checkbox" id="marShowAttendanceImpact" checked>
+                <label for="marShowAttendanceImpact">Attendance Impact (engagement before/after membership)</label>
+            </div>
+            <div class="mar-checkbox-row">
+                <input type="checkbox" id="marShowBaptismAnalysis" checked>
+                <label for="marShowBaptismAnalysis">Baptism Analysis (baptism age bin breakdown)</label>
+            </div>
+            <div class="mar-checkbox-row">
+                <input type="checkbox" id="marShowStatusTransitions" checked>
+                <label for="marShowStatusTransitions">Status Transitions (members gained/lost per year)</label>
+            </div>
+            <div class="mar-checkbox-row">
+                <input type="checkbox" id="marShowLapsedMembers" checked>
+                <label for="marShowLapsedMembers">Lapsed Members (members lost per year)</label>
+            </div>
+
+            <!-- Member Status IDs (advanced) -->
+            <div class="mar-section-title">Advanced: Member Status IDs</div>
+            <div class="mar-help" style="margin-bottom:10px;">These typically do not need to change. Check lookup.MemberStatus if unsure.</div>
+
+            <div class="mar-row">
+                <div class="mar-col-third">
+                    <div class="mar-form-group">
+                        <label>Member Status ID</label>
+                        <input class="mar-input" id="marMemberStatusId" type="number" value="10">
+                    </div>
+                </div>
+                <div class="mar-col-third">
+                    <div class="mar-form-group">
+                        <label>Previous Member ID</label>
+                        <input class="mar-input" id="marPrevMemberStatusId" type="number" value="40">
+                    </div>
+                </div>
+                <div class="mar-col-third">
+                    <div class="mar-form-group">
+                        <label>Prospect Status ID</label>
+                        <input class="mar-input" id="marProspectStatusId" type="number" value="20">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+var marScriptName = 'TPxi_MembershipAnalysisReport';
+
+function marAjax(data, callback) {
+    data.ajax = 'true';
+    $.ajax({
+        url: '/PyScriptForm/' + marScriptName,
+        type: 'POST',
+        data: data,
+        success: function(resp) {
+            try {
+                var parsed = (typeof resp === 'string') ? JSON.parse(resp) : resp;
+                callback(parsed);
+            } catch(e) {
+                callback({success: false, message: 'Parse error: ' + e.message});
+            }
+        },
+        error: function(xhr, status, err) {
+            callback({success: false, message: 'Request failed: ' + err});
+        }
+    });
+}
+
+function marShowStatus(msg, isError) {
+    var el = document.getElementById('marStatus');
+    el.textContent = msg;
+    el.className = 'mar-status ' + (isError ? 'mar-status-error' : 'mar-status-success');
+    el.style.display = 'block';
+    setTimeout(function() { el.style.display = 'none'; }, 4000);
+}
+
+function marCollectConfig() {
+    return {
+        reportTitle: document.getElementById('marReportTitle').value,
+        yearsToAnalyze: parseInt(document.getElementById('marYearsToAnalyze').value) || 5,
+        cohortYearsToAnalyze: parseInt(document.getElementById('marCohortYears').value) || 10,
+        useFiscalYear: document.getElementById('marUseFiscalYear').value === 'true',
+        fiscalYearStartMonth: parseInt(document.getElementById('marFYStartMonth').value) || 10,
+        fiscalYearStartDay: parseInt(document.getElementById('marFYStartDay').value) || 1,
+        campusId: parseInt(document.getElementById('marCampus').value) || 0,
+        primaryWorshipProgramId: parseInt(document.getElementById('marWorshipProgram').value) || 0,
+        primaryWorshipProgramName: document.getElementById('marWorshipName').value,
+        smallGroupProgramId: parseInt(document.getElementById('marSmallGroupProgram').value) || 0,
+        smallGroupProgramName: document.getElementById('marSmallGroupName').value,
+        showCampusBreakdown: document.getElementById('marShowCampusBreakdown').checked,
+        showOriginAnalysis: document.getElementById('marShowOriginAnalysis').checked,
+        showRetentionMetrics: document.getElementById('marShowRetentionMetrics').checked,
+        showFamilyAnalysis: document.getElementById('marShowFamilyAnalysis').checked,
+        showAttendanceImpact: document.getElementById('marShowAttendanceImpact').checked,
+        showBaptismAnalysis: document.getElementById('marShowBaptismAnalysis').checked,
+        showStatusTransitions: document.getElementById('marShowStatusTransitions').checked,
+        showLapsedMembers: document.getElementById('marShowLapsedMembers').checked,
+        memberStatusId: parseInt(document.getElementById('marMemberStatusId').value) || 10,
+        previousMemberStatusId: parseInt(document.getElementById('marPrevMemberStatusId').value) || 40,
+        prospectStatusId: parseInt(document.getElementById('marProspectStatusId').value) || 20,
+        guestStatusId: 30
+    };
+}
+
+function marApplyConfig(cfg) {
+    document.getElementById('marReportTitle').value = cfg.reportTitle || '';
+    document.getElementById('marYearsToAnalyze').value = cfg.yearsToAnalyze || 5;
+    document.getElementById('marCohortYears').value = cfg.cohortYearsToAnalyze || 10;
+    document.getElementById('marUseFiscalYear').value = cfg.useFiscalYear ? 'true' : 'false';
+    document.getElementById('marFYStartMonth').value = cfg.fiscalYearStartMonth || 10;
+    document.getElementById('marFYStartDay').value = cfg.fiscalYearStartDay || 1;
+    document.getElementById('marCampus').value = cfg.campusId || 0;
+    document.getElementById('marWorshipName').value = cfg.primaryWorshipProgramName || 'Worship';
+    document.getElementById('marSmallGroupName').value = cfg.smallGroupProgramName || 'Connect Groups';
+    document.getElementById('marShowCampusBreakdown').checked = !!cfg.showCampusBreakdown;
+    document.getElementById('marShowOriginAnalysis').checked = !!cfg.showOriginAnalysis;
+    document.getElementById('marShowRetentionMetrics').checked = cfg.showRetentionMetrics !== false;
+    document.getElementById('marShowFamilyAnalysis').checked = cfg.showFamilyAnalysis !== false;
+    document.getElementById('marShowAttendanceImpact').checked = cfg.showAttendanceImpact !== false;
+    document.getElementById('marShowBaptismAnalysis').checked = cfg.showBaptismAnalysis !== false;
+    document.getElementById('marShowStatusTransitions').checked = cfg.showStatusTransitions !== false;
+    document.getElementById('marShowLapsedMembers').checked = cfg.showLapsedMembers !== false;
+    document.getElementById('marMemberStatusId').value = cfg.memberStatusId || 10;
+    document.getElementById('marPrevMemberStatusId').value = cfg.previousMemberStatusId || 40;
+    document.getElementById('marProspectStatusId').value = cfg.prospectStatusId || 20;
+    // Set program selects after they load
+    window._marPendingWorshipId = cfg.primaryWorshipProgramId || 0;
+    window._marPendingSmallGroupId = cfg.smallGroupProgramId || 0;
+}
+
+function marSaveConfig() {
+    var cfg = marCollectConfig();
+    marAjax({action: 'save_config', config_data: JSON.stringify(cfg)}, function(data) {
+        if (data.success) {
+            marShowStatus('Settings saved successfully!', false);
+            // Hide welcome after first save
+            var w = document.getElementById('marWelcome');
+            if (w) w.style.display = 'none';
+        } else {
+            marShowStatus('Error saving: ' + data.message, true);
+        }
+    });
+}
+
+function marRunReport() {
+    // Save config first, then redirect to the report page (GET)
+    var cfg = marCollectConfig();
+    marAjax({action: 'save_config', config_data: JSON.stringify(cfg)}, function(data) {
+        if (data.success) {
+            window.open('/PyScriptForm/' + marScriptName, '_blank');
+        } else {
+            marShowStatus('Error saving before run: ' + data.message, true);
+        }
+    });
+}
+
+function marLoadCampuses() {
+    marAjax({action: 'get_campuses'}, function(data) {
+        if (data.success) {
+            var sel = document.getElementById('marCampus');
+            sel.innerHTML = '';
+            for (var i = 0; i < data.campuses.length; i++) {
+                var c = data.campuses[i];
+                var opt = document.createElement('option');
+                opt.value = c.id;
+                opt.textContent = c.name;
+                sel.appendChild(opt);
+            }
+            if (window._marPendingCampusId !== undefined) {
+                sel.value = window._marPendingCampusId;
+            }
+        }
+    });
+}
+
+function marLoadPrograms() {
+    marAjax({action: 'get_programs'}, function(data) {
+        if (data.success) {
+            var worshipSel = document.getElementById('marWorshipProgram');
+            var sgSel = document.getElementById('marSmallGroupProgram');
+            worshipSel.innerHTML = '<option value="0">-- Select Program --</option>';
+            sgSel.innerHTML = '<option value="0">-- Select Program --</option>';
+            for (var i = 0; i < data.programs.length; i++) {
+                var p = data.programs[i];
+                var opt1 = document.createElement('option');
+                opt1.value = p.id;
+                opt1.textContent = p.name;
+                worshipSel.appendChild(opt1);
+                var opt2 = document.createElement('option');
+                opt2.value = p.id;
+                opt2.textContent = p.name;
+                sgSel.appendChild(opt2);
+            }
+            if (window._marPendingWorshipId) worshipSel.value = window._marPendingWorshipId;
+            if (window._marPendingSmallGroupId) sgSel.value = window._marPendingSmallGroupId;
+        }
+    });
+}
+
+function marInit() {
+    marAjax({action: 'load_config'}, function(data) {
+        var isFirstRun = true;
+        if (data.success && data.config) {
+            window._marPendingCampusId = data.config.campusId || 0;
+            marApplyConfig(data.config);
+            // If reportTitle has been changed from default, user has configured before
+            if (data.config._saved) isFirstRun = false;
+        }
+        // Show welcome banner on first run
+        var w = document.getElementById('marWelcome');
+        if (w && isFirstRun) w.style.display = 'block';
+        marLoadCampuses();
+        marLoadPrograms();
+    });
+}
+
+document.addEventListener('DOMContentLoaded', function() { marInit(); });
+if (document.readyState !== 'loading') { marInit(); }
+</script>
+'''
+
 
 def main():
     """Main execution function"""
+    model.Header = Config.REPORT_TITLE
     try:
         # Check permissions
         if not check_permissions():
@@ -219,9 +831,24 @@ def gather_analytics_data(start_date, end_date, cohort_start_date_str=None):
             print('<script>console.log("Loading campus breakdown...");</script>')
             analytics['campus_breakdown'] = get_campus_breakdown(start_date, end_date)
         
-        # 8. Current totals
+        # 8. Baptism age bin analysis
+        if Config.SHOW_BAPTISM_ANALYSIS:
+            print('<script>console.log("Loading baptism age analysis...");</script>')
+            analytics['baptism_age'] = get_baptism_age_trends(start_date, end_date)
+
+        # 9. Current totals
         print('<script>console.log("Loading current totals...");</script>')
         analytics['current_totals'] = get_current_totals()
+
+        # 10. Lapsed members (high-level counts by year)
+        if Config.SHOW_LAPSED_MEMBERS:
+            print('<script>console.log("Loading lapsed member stats...");</script>')
+            analytics['lapsed'] = get_lapsed_member_stats(start_date, end_date)
+
+        # 11. Member status transitions (high-level flows)
+        if Config.SHOW_STATUS_TRANSITIONS:
+            print('<script>console.log("Loading status transitions...");</script>')
+            analytics['transitions'] = get_status_transitions(start_date, end_date)
         
     except Exception as e:
         print('<div class="alert alert-warning">Error loading analytics data: {}</div>'.format(str(e)))
@@ -246,11 +873,11 @@ def get_yearly_membership_trends(start_date, end_date):
         -- Marital status
         SUM(CASE WHEN p.MaritalStatusId = 20 THEN 1 ELSE 0 END) AS Married,
         SUM(CASE WHEN p.MaritalStatusId = 10 THEN 1 ELSE 0 END) AS Single
-    FROM People p
+    FROM People p WITH (NOLOCK)
     WHERE p.MemberStatusId = {}
       AND p.JoinDate >= '{}'
       AND p.JoinDate <= '{}'
-      AND p.IsDeceased = 0
+      AND p.IsDeceased = 0{}
     GROUP BY {}
     ORDER BY {} DESC
     """.format(
@@ -258,10 +885,11 @@ def get_yearly_membership_trends(start_date, end_date):
         Config.MEMBER_STATUS_ID,
         start_date,
         end_date,
+        campus_filter(),
         fiscal_year_sql,
         fiscal_year_sql
     )
-    
+
     return q.QuerySql(sql)
 
 def get_age_demographics_trends(start_date, end_date):
@@ -281,17 +909,18 @@ def get_age_demographics_trends(start_date, end_date):
     
     sql += """
         SUM(CASE WHEN p.Age IS NULL THEN 1 ELSE 0 END) AS UnknownAge
-    FROM People p
+    FROM People p WITH (NOLOCK)
     WHERE p.MemberStatusId = {}
       AND p.JoinDate >= '{}'
       AND p.JoinDate <= '{}'
-      AND p.IsDeceased = 0
+      AND p.IsDeceased = 0{}
     GROUP BY {}
     ORDER BY {} DESC
     """.format(
         Config.MEMBER_STATUS_ID,
         start_date,
         end_date,
+        campus_filter(),
         fiscal_year_sql,
         fiscal_year_sql
     )
@@ -310,12 +939,12 @@ def get_origin_trends(start_date, end_date):
             {} AS JoinYear,
             ISNULL(o.Description, 'Not Specified') AS Origin,
             COUNT(*) AS Count
-        FROM People p
+        FROM People p WITH (NOLOCK)
         LEFT JOIN Origin o ON p.OriginId = o.Id
         WHERE p.MemberStatusId = {}
           AND p.JoinDate >= '{}'
           AND p.JoinDate <= '{}'
-          AND p.IsDeceased = 0
+          AND p.IsDeceased = 0{}
         GROUP BY {}, o.Description
         ORDER BY {} DESC, COUNT(*) DESC
         """.format(
@@ -323,6 +952,7 @@ def get_origin_trends(start_date, end_date):
             Config.MEMBER_STATUS_ID,
             start_date,
             end_date,
+            campus_filter(),
             fiscal_year_sql,
             fiscal_year_sql
         )
@@ -335,11 +965,11 @@ def get_origin_trends(start_date, end_date):
             {} AS JoinYear,
             'Not Available' AS Origin,
             COUNT(*) AS Count
-        FROM People p
+        FROM People p WITH (NOLOCK)
         WHERE p.MemberStatusId = {}
           AND p.JoinDate >= '{}'
           AND p.JoinDate <= '{}'
-          AND p.IsDeceased = 0
+          AND p.IsDeceased = 0{}
         GROUP BY {}
         ORDER BY {}, COUNT(*) DESC
         """.format(
@@ -347,6 +977,7 @@ def get_origin_trends(start_date, end_date):
             Config.MEMBER_STATUS_ID,
             start_date,
             end_date,
+            campus_filter(),
             fiscal_year_sql,
             fiscal_year_sql
         )
@@ -424,17 +1055,18 @@ def get_attendance_impact_analysis(start_date, end_date):
         # Get fiscal years first
         year_sql = """
         SELECT DISTINCT {} AS Year
-        FROM People p
+        FROM People p WITH (NOLOCK)
         WHERE p.MemberStatusId = {}
           AND p.JoinDate >= '{}'
           AND p.JoinDate <= '{}'
-          AND p.IsDeceased = 0
+          AND p.IsDeceased = 0{}
         ORDER BY Year
         """.format(
             get_fiscal_year_sql().format("p.JoinDate"),
             Config.MEMBER_STATUS_ID,
             start_date,
-            end_date
+            end_date,
+            campus_filter()
         )
         
         years = q.QuerySql(year_sql)
@@ -571,15 +1203,15 @@ def get_attendance_impact_analysis(start_date, end_date):
     # Now get connect group and overall ministry attendance data
     sql = """
     WITH MembershipData AS (
-        SELECT 
+        SELECT
             p.PeopleId,
             p.JoinDate,
             {} AS JoinYear
-        FROM People p
+        FROM People p WITH (NOLOCK)
         WHERE p.MemberStatusId = {}
           AND p.JoinDate >= '{}'
           AND p.JoinDate <= '{}'
-          AND p.IsDeceased = 0
+          AND p.IsDeceased = 0{}
     ),
     EngagementData AS (
         SELECT 
@@ -628,6 +1260,7 @@ def get_attendance_impact_analysis(start_date, end_date):
         Config.MEMBER_STATUS_ID,
         start_date,
         end_date,
+        campus_filter(),
         Config.SMALL_GROUP_PROGRAM_ID,
         Config.SMALL_GROUP_PROGRAM_ID,
         Config.PRIMARY_WORSHIP_PROGRAM_ID,
@@ -666,7 +1299,7 @@ def get_family_trends(start_date, end_date):
             FamilyId,
             COUNT(*) AS FamilySize,
             MAX(CASE WHEN Age < 18 THEN 1 ELSE 0 END) AS HasChildren
-        FROM People
+        FROM People WITH (NOLOCK)
         WHERE IsDeceased = 0
         GROUP BY FamilyId
     )
@@ -681,12 +1314,12 @@ def get_family_trends(start_date, end_date):
         -- Family composition
         COUNT(DISTINCT CASE WHEN f.HasChildren = 1 THEN p.FamilyId END) AS FamiliesWithChildren,
         AVG(CAST(f.FamilySize AS FLOAT)) AS AvgFamilySize
-    FROM People p
+    FROM People p WITH (NOLOCK)
     INNER JOIN FamilyData f ON p.FamilyId = f.FamilyId
     WHERE p.MemberStatusId = {}
       AND p.JoinDate >= '{}'
       AND p.JoinDate <= '{}'
-      AND p.IsDeceased = 0
+      AND p.IsDeceased = 0{}
     GROUP BY {}
     ORDER BY {} DESC
     """.format(
@@ -694,6 +1327,7 @@ def get_family_trends(start_date, end_date):
         Config.MEMBER_STATUS_ID,
         start_date,
         end_date,
+        campus_filter(),
         fiscal_year_sql,
         fiscal_year_sql
     )
@@ -706,15 +1340,15 @@ def get_retention_metrics(start_date, end_date):
     
     sql = """
     WITH MemberCohorts AS (
-        SELECT 
+        SELECT
             {} AS CohortYear,
             PeopleId,
             JoinDate
-        FROM People
+        FROM People WITH (NOLOCK)
         WHERE MemberStatusId = {}
           AND JoinDate >= '{}'
-          AND JoinDate <= DATEADD(year, -1, GETDATE())  -- Exclude current year for retention calc
-          AND IsDeceased = 0
+          AND JoinDate <= DATEADD(year, -1, GETDATE())
+          AND IsDeceased = 0{}
     ),
     RetentionData AS (
         SELECT 
@@ -756,6 +1390,7 @@ def get_retention_metrics(start_date, end_date):
         fiscal_year_sql,
         Config.MEMBER_STATUS_ID,
         start_date,
+        campus_filter(''),
         Config.MEMBER_STATUS_ID,
         Config.MEMBER_STATUS_ID,
         Config.MEMBER_STATUS_ID
@@ -775,7 +1410,7 @@ def get_campus_breakdown(start_date, end_date):
             ISNULL(c.Description, 'No Campus') AS Campus,
             COUNT(*) AS NewMembers,
             COUNT(DISTINCT p.FamilyId) AS NewFamilies
-        FROM People p
+        FROM People p WITH (NOLOCK)
         LEFT JOIN Campus c ON p.CampusId = c.Id
         WHERE p.MemberStatusId = {}
           AND p.JoinDate >= '{}'
@@ -802,7 +1437,7 @@ def get_campus_breakdown(start_date, end_date):
                  ELSE 'Campus ' + CAST(p.CampusId AS varchar) END AS Campus,
             COUNT(*) AS NewMembers,
             COUNT(DISTINCT p.FamilyId) AS NewFamilies
-        FROM People p
+        FROM People p WITH (NOLOCK)
         WHERE p.MemberStatusId = {}
           AND p.JoinDate >= '{}'
           AND p.JoinDate <= '{}'
@@ -820,6 +1455,77 @@ def get_campus_breakdown(start_date, end_date):
         
         return q.QuerySql(sql)
 
+def get_lapsed_member_stats(start_date, end_date):
+    """Get high-level lapsed/dropped member counts by fiscal year.
+    Tracks people whose MemberStatusId changed FROM member to previous member."""
+    fiscal_year_sql = get_fiscal_year_sql().format("cl.Created")
+    sql = """
+    SELECT
+        {fy} AS LapsedYear,
+        COUNT(DISTINCT cl.PeopleId) AS LapsedCount
+    FROM ChangeLog cl WITH (NOLOCK)
+    INNER JOIN People p WITH (NOLOCK) ON cl.PeopleId = p.PeopleId
+    WHERE cl.Field = 'MemberStatusId'
+      AND cl.Before = '{member}'
+      AND cl.After = '{previous}'
+      AND cl.Created >= '{start}'
+      AND cl.Created <= '{end}'{campus}
+    GROUP BY {fy}
+    ORDER BY {fy} DESC
+    """.format(
+        fy=fiscal_year_sql,
+        member=Config.MEMBER_STATUS_ID,
+        previous=Config.PREVIOUS_MEMBER_STATUS_ID,
+        start=start_date,
+        end=end_date,
+        campus=campus_filter()
+    )
+    try:
+        return q.QuerySql(sql)
+    except:
+        return []
+
+def get_status_transitions(start_date, end_date):
+    """Get high-level member status transition summary by fiscal year.
+    Shows flows between status categories: joined, dropped, returned."""
+    fiscal_year_sql = get_fiscal_year_sql().format("cl.Created")
+    sql = """
+    SELECT
+        {fy} AS TransYear,
+        -- Became members (any status -> member)
+        COUNT(DISTINCT CASE WHEN cl.After = '{member}'
+            AND (cl.Before != '{member}' OR cl.Before IS NULL) THEN cl.PeopleId END) AS BecameMember,
+        -- Left membership (member -> previous)
+        COUNT(DISTINCT CASE WHEN cl.Before = '{member}'
+            AND cl.After = '{previous}' THEN cl.PeopleId END) AS BecamePrevious,
+        -- Returned to membership (previous -> member)
+        COUNT(DISTINCT CASE WHEN cl.Before = '{previous}'
+            AND cl.After = '{member}' THEN cl.PeopleId END) AS Returned,
+        -- Net change
+        COUNT(DISTINCT CASE WHEN cl.After = '{member}'
+            AND (cl.Before != '{member}' OR cl.Before IS NULL) THEN cl.PeopleId END)
+        - COUNT(DISTINCT CASE WHEN cl.Before = '{member}'
+            AND cl.After = '{previous}' THEN cl.PeopleId END) AS NetChange
+    FROM ChangeLog cl WITH (NOLOCK)
+    INNER JOIN People p WITH (NOLOCK) ON cl.PeopleId = p.PeopleId
+    WHERE cl.Field = 'MemberStatusId'
+      AND cl.Created >= '{start}'
+      AND cl.Created <= '{end}'{campus}
+    GROUP BY {fy}
+    ORDER BY {fy} DESC
+    """.format(
+        fy=fiscal_year_sql,
+        member=Config.MEMBER_STATUS_ID,
+        previous=Config.PREVIOUS_MEMBER_STATUS_ID,
+        start=start_date,
+        end=end_date,
+        campus=campus_filter()
+    )
+    try:
+        return q.QuerySql(sql)
+    except:
+        return []
+
 def get_current_totals():
     """Get current membership totals"""
     sql = """
@@ -830,7 +1536,7 @@ def get_current_totals():
         AVG(Age) AS AverageAge,
         SUM(CASE WHEN GenderId = 1 THEN 1 ELSE 0 END) AS Males,
         SUM(CASE WHEN GenderId = 2 THEN 1 ELSE 0 END) AS Females
-    FROM People
+    FROM People WITH (NOLOCK)
     WHERE MemberStatusId = {}
       AND IsDeceased = 0
     """.format(Config.MEMBER_STATUS_ID)
@@ -843,23 +1549,58 @@ def get_current_totals():
 def generate_report(analytics, start_date, end_date):
     """Generate the HTML report with all visualizations"""
     
-    # Report header
+    # Build campus dropdown options
+    _campus_options = '<option value="0"{}>All Campuses</option>'.format(' selected' if Config.CAMPUS_ID == 0 else '')
+    try:
+        _campuses = q.QuerySql("SELECT Id, Description FROM lookup.Campus WHERE Id > 0 ORDER BY Description")
+        for _c in _campuses:
+            _cid = int(safe_get_value(_c, 'Id', 0))
+            _cname = str(safe_get_value(_c, 'Description', 'Campus ' + str(_cid)))
+            _sel = ' selected' if _cid == Config.CAMPUS_ID else ''
+            _campus_options += '<option value="{}"{}>{}</option>'.format(_cid, _sel, _cname)
+    except:
+        pass
+
+    # Report header with campus selector and settings gear
     print("""
-    <div class="container-fluid">
+    <div style="max-width:100%;overflow-x:hidden">
         <div class="row">
             <div class="col-md-12">
-                <div class="page-header">
-                    <h1>{} <small>{} Year Main Analysis | {} Year Cohort Analysis</small></h1>
-                    <p class="text-muted">Report Period: {} to {}</p>
+                <div class="page-header" style="position:relative">
+                    <h1>{title} <small>{years} Year Main Analysis | {cohort} Year Cohort Analysis</small></h1>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:-5px">
+                        <p class="text-muted" style="margin:0">Report Period: {start} to {end}</p>
+                        <div style="display:flex;align-items:center;gap:12px">
+                            <select id="marCampusSwitch" onchange="marSwitchCampus(this.value)"
+                                    style="padding:4px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;background:#fff">
+                                {campus_options}
+                            </select>
+                            <a href="/PyScriptForm/TPxi_MembershipAnalysisReport?settings=1"
+                               style="font-size:14px;color:#999;text-decoration:none;white-space:nowrap"
+                               title="Report Settings">
+                                <i class="fa fa-cog"></i> Settings
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+        <script>
+        function marSwitchCampus(campusId) {{
+            var url = window.location.pathname;
+            if (campusId && campusId !== '0') {{
+                url += '?campus=' + campusId;
+            }}
+            window.location.href = url;
+        }}
+        </script>
     """.format(
-        Config.REPORT_TITLE,
-        Config.YEARS_TO_ANALYZE,
-        Config.COHORT_YEARS_TO_ANALYZE,
-        format_date_display(start_date),
-        format_date_display(end_date)
+        title=Config.REPORT_TITLE,
+        campus_options=_campus_options,
+        years=Config.YEARS_TO_ANALYZE,
+        cohort=Config.COHORT_YEARS_TO_ANALYZE,
+        start=format_date_display(start_date),
+        end=format_date_display(end_date)
     ))
     
     try:
@@ -918,17 +1659,37 @@ def generate_report(analytics, start_date, end_date):
         print('<div class="alert alert-warning">Error rendering retention metrics: {}</div>'.format(str(e)))
     
     try:
+        # Baptism Age Bin Analysis
+        if Config.SHOW_BAPTISM_ANALYSIS and 'baptism_age' in analytics:
+            print('<script>console.log("Rendering baptism age analysis...");</script>')
+            render_baptism_age_chart(analytics['baptism_age'])
+    except Exception as e:
+        print('<div class="alert alert-warning">Error rendering baptism analysis: {}</div>'.format(str(e)))
+
+    try:
         # Campus Breakdown
         if Config.SHOW_CAMPUS_BREAKDOWN and 'campus_breakdown' in analytics:
             print('<script>console.log("Rendering campus breakdown...");</script>')
             render_campus_breakdown(analytics['campus_breakdown'])
     except Exception as e:
         print('<div class="alert alert-warning">Error rendering campus breakdown: {}</div>'.format(str(e)))
-    
-    # Export button
-    if Config.ENABLE_EXPORT:
-        render_export_button()
-    
+
+    try:
+        # Status Transitions
+        if 'transitions' in analytics and analytics['transitions']:
+            print('<script>console.log("Rendering status transitions...");</script>')
+            render_status_transitions(analytics['transitions'])
+    except Exception as e:
+        print('<div class="alert alert-warning">Error rendering status transitions: {}</div>'.format(str(e)))
+
+    try:
+        # Lapsed Members
+        if 'lapsed' in analytics and analytics['lapsed']:
+            print('<script>console.log("Rendering lapsed members...");</script>')
+            render_lapsed_members(analytics['lapsed'])
+    except Exception as e:
+        print('<div class="alert alert-warning">Error rendering lapsed members: {}</div>'.format(str(e)))
+
     print("</div>")  # Close container
 
 def render_executive_summary(analytics):
@@ -1196,15 +1957,31 @@ def render_yearly_trends_chart(yearly_trends):
                     <tbody>
     """)
     
-    for year in yearly_trends:
+    # Build list for YoY comparison (data comes DESC, so index+1 is previous year)
+    _trend_list = list(yearly_trends) if yearly_trends else []
+    for i, year in enumerate(_trend_list):
         males = safe_get_value(year, 'Males', 0)
         new_members = safe_get_value(year, 'NewMembers', 0)
         male_pct = (float(males) / float(new_members) * 100) if new_members > 0 else 0
         avg_age = safe_get_value(year, 'AvgAgeAtJoining', None)
+
+        # YoY delta indicator (compare to next item which is the prior year in DESC order)
+        _yoy = ''
+        if i < len(_trend_list) - 1:
+            _prev = safe_get_value(_trend_list[i + 1], 'NewMembers', 0)
+            if _prev > 0:
+                _pct = int(round((float(new_members) - float(_prev)) / float(_prev) * 100))
+                if _pct > 0:
+                    _yoy = ' <span style="color:#27ae60;font-size:11px" title="vs prior year"><i class="fa fa-arrow-up"></i> +{}%</span>'.format(_pct)
+                elif _pct < 0:
+                    _yoy = ' <span style="color:#e74c3c;font-size:11px" title="vs prior year"><i class="fa fa-arrow-down"></i> {}%</span>'.format(_pct)
+                else:
+                    _yoy = ' <span style="color:#999;font-size:11px" title="vs prior year"><i class="fa fa-minus"></i> 0%</span>'
+
         print("""
                         <tr>
                             <td>{}</td>
-                            <td>{}</td>
+                            <td>{}{}</td>
                             <td>{}</td>
                             <td>{}</td>
                             <td>{}</td>
@@ -1215,7 +1992,7 @@ def render_yearly_trends_chart(yearly_trends):
                         </tr>
         """.format(
             get_year_label() + str(safe_get_value(year, 'JoinYear', '')),
-            new_members,
+            new_members, _yoy,
             safe_get_value(year, 'NewFamilies', 0),
             males,
             safe_get_value(year, 'Females', 0),
@@ -2084,6 +2861,122 @@ def render_retention_metrics(retention_data):
     </div>
     """)
 
+def render_status_transitions(transitions):
+    """Render high-level member status transition table with YoY indicators"""
+    print("""
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Membership Status Transitions</h2>
+            <p class="text-muted">Tracks when people move between member status categories based on change log records.</p>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Became Member</th>
+                            <th>Left Membership</th>
+                            <th>Returned</th>
+                            <th>Net Change</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    """)
+    _tlist = list(transitions) if transitions else []
+    for i, row in enumerate(_tlist):
+        _became = int(safe_get_value(row, 'BecameMember', 0))
+        _left = int(safe_get_value(row, 'BecamePrevious', 0))
+        _returned = int(safe_get_value(row, 'Returned', 0))
+        _net = int(safe_get_value(row, 'NetChange', 0))
+
+        # Net change indicator
+        if _net > 0:
+            _net_html = '<span style="color:#27ae60;font-weight:bold"><i class="fa fa-arrow-up"></i> +{}</span>'.format(_net)
+        elif _net < 0:
+            _net_html = '<span style="color:#e74c3c;font-weight:bold"><i class="fa fa-arrow-down"></i> {}</span>'.format(_net)
+        else:
+            _net_html = '<span style="color:#999">0</span>'
+
+        print("""
+                        <tr>
+                            <td>{yr}</td>
+                            <td><span style="color:#27ae60">{became}</span></td>
+                            <td><span style="color:#e74c3c">{left}</span></td>
+                            <td><span style="color:#3498db">{returned}</span></td>
+                            <td>{net}</td>
+                        </tr>
+        """.format(
+            yr=get_year_label() + str(safe_get_value(row, 'TransYear', '')),
+            became=_became,
+            left=_left,
+            returned=_returned,
+            net=_net_html
+        ))
+
+    print("""
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    """)
+
+def render_lapsed_members(lapsed_data):
+    """Render high-level lapsed member counts by fiscal year"""
+    print("""
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Lapsed Members</h2>
+            <p class="text-muted">Members whose status changed from Member to Previous Member, by year.</p>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Members Lost</th>
+                            <th>Trend</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    """)
+    _llist = list(lapsed_data) if lapsed_data else []
+    for i, row in enumerate(_llist):
+        _count = int(safe_get_value(row, 'LapsedCount', 0))
+
+        # YoY trend
+        _trend = ''
+        if i < len(_llist) - 1:
+            _prev = int(safe_get_value(_llist[i + 1], 'LapsedCount', 0))
+            if _prev > 0:
+                _pct = int(round((float(_count) - float(_prev)) / float(_prev) * 100))
+                if _pct > 0:
+                    # More lapsed = bad (red up arrow)
+                    _trend = '<span style="color:#e74c3c;font-size:11px"><i class="fa fa-arrow-up"></i> +{}% vs prior</span>'.format(_pct)
+                elif _pct < 0:
+                    # Fewer lapsed = good (green down arrow)
+                    _trend = '<span style="color:#27ae60;font-size:11px"><i class="fa fa-arrow-down"></i> {}% vs prior</span>'.format(_pct)
+                else:
+                    _trend = '<span style="color:#999;font-size:11px">No change</span>'
+
+        print("""
+                        <tr>
+                            <td>{yr}</td>
+                            <td>{count}</td>
+                            <td>{trend}</td>
+                        </tr>
+        """.format(
+            yr=get_year_label() + str(safe_get_value(row, 'LapsedYear', '')),
+            count=_count,
+            trend=_trend
+        ))
+
+    print("""
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    """)
+
 def render_campus_breakdown(campus_data):
     """Render campus-specific membership analysis"""
     # Aggregate by campus
@@ -2148,27 +3041,345 @@ def render_campus_breakdown(campus_data):
     </script>
     """)
 
-def render_export_button():
-    """Render export functionality"""
+def get_baptism_age_trends(start_date, end_date):
+    """Get baptism counts by age bin and fiscal year.
+    Calculates age at time of baptism using BDate and BaptismDate.
+    Falls back to current Age if BDate is not available.
+    """
+    fiscal_year_sql = get_fiscal_year_sql().format("p.BaptismDate")
+
+    # Calculate age at baptism: DATEDIFF(year, BDate, BaptismDate) adjusted for birthday
+    # Falls back to current p.Age if BDate is null
+    age_at_baptism = """CASE
+            WHEN p.BDate IS NOT NULL THEN
+                DATEDIFF(year, p.BDate, p.BaptismDate)
+                - CASE WHEN DATEADD(year, DATEDIFF(year, p.BDate, p.BaptismDate), p.BDate) > p.BaptismDate THEN 1 ELSE 0 END
+            ELSE p.Age
+        END"""
+
+    # Build age bin CASE expression using age at baptism
+    age_case = "CASE\n"
+    for label, min_age, max_age in Config.BAPTISM_AGE_BINS:
+        if max_age >= 150:
+            age_case += "            WHEN ({}) >= {} THEN '{}'\n".format(age_at_baptism, min_age, label)
+        else:
+            age_case += "            WHEN ({}) >= {} AND ({}) <= {} THEN '{}'\n".format(age_at_baptism, min_age, age_at_baptism, max_age, label)
+    age_case += "            WHEN ({}) IS NULL THEN 'Unknown'\n".format(age_at_baptism)
+    age_case += "        END"
+
+    sql = """
+    SELECT
+        {fiscal_year} AS BaptismYear,
+        {age_case} AS AgeBin,
+        COUNT(*) AS BaptismCount
+    FROM People p WITH (NOLOCK)
+    WHERE p.BaptismDate IS NOT NULL
+      AND p.BaptismDate >= '{start}'
+      AND p.BaptismDate <= '{end}'
+      AND p.IsDeceased = 0{campus}
+    GROUP BY {fiscal_year}, {age_case}
+    ORDER BY {fiscal_year} DESC, {age_case}
+    """.format(
+        fiscal_year=fiscal_year_sql,
+        age_case=age_case,
+        start=start_date,
+        end=end_date,
+        campus=campus_filter()
+    )
+
+    return q.QuerySql(sql)
+
+
+def render_baptism_age_chart(baptism_data):
+    """Render baptism age bin breakdown by year as stacked bar chart and table"""
+    if not baptism_data or len(baptism_data) == 0:
+        print("""
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Baptism Age Analysis</h2>
+                <div class="alert alert-info">No baptism data found for the selected period.</div>
+            </div>
+        </div>
+        """)
+        return
+
+    # Pivot data: collect years and age bins
+    years_set = {}
+    bins_set = []
+    for row in baptism_data:
+        yr = safe_get_value(row, 'BaptismYear', '')
+        ab = safe_get_value(row, 'AgeBin', 'Unknown')
+        cnt = safe_get_value(row, 'BaptismCount', 0)
+        if yr not in years_set:
+            years_set[yr] = {}
+        years_set[yr][ab] = cnt
+        if ab not in bins_set:
+            bins_set.append(ab)
+
+    # Sort years ascending for chart
+    sorted_years = sorted(years_set.keys())
+
+    # Use config bin order, then append any extras (like Unknown)
+    ordered_bins = [label for label, _, _ in Config.BAPTISM_AGE_BINS]
+    if 'Unknown' in bins_set:
+        ordered_bins.append('Unknown')
+
+    # Build chart labels
+    year_labels = ",".join(["'{}{}'".format(get_year_label(), y) for y in sorted_years])
+
+    # Chart colors
+    bin_colors = [
+        "#667eea", "#48bb78", "#ed8936", "#e53e3e", "#38b2ac",
+        "#805ad5", "#d69e2e", "#3182ce", "#e84393", "#999999"
+    ]
+
+    # Short labels for table columns, full labels for chart legend
+    short_labels = {}
+    for label, min_age, max_age in Config.BAPTISM_AGE_BINS:
+        if 'Preschool' in label:
+            short_labels[label] = 'PS'
+        elif 'Children' in label:
+            short_labels[label] = 'CH'
+        elif 'Preteen' in label:
+            short_labels[label] = 'PT'
+        elif 'Middle' in label:
+            short_labels[label] = 'MS'
+        elif 'High' in label:
+            short_labels[label] = 'HS'
+        else:
+            short_labels[label] = label
+    short_labels['Unknown'] = 'Unk'
+
+    # Start chart section
     print("""
     <div class="row">
         <div class="col-md-12">
-            <hr>
-            <div class="text-center">
-                <button class="btn btn-primary" onclick="exportData()">
-                    <i class="fa fa-download"></i> Export Full Data to CSV
-                </button>
+            <h2>Baptism Age Analysis</h2>
+            <div class="panel panel-default">
+                <div class="panel-body">
+                    <div style="height: 400px;">
+                        <canvas id="baptismAgeChart"></canvas>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
+
     <script>
-    function exportData() {
-        alert('Export functionality would download detailed CSV data. Implement based on your needs.');
-        // In production, this would trigger a download of the full dataset
-    }
+    var ctxBaptism = document.getElementById('baptismAgeChart').getContext('2d');
+    var baptismAgeChart = new Chart(ctxBaptism, {
+        type: 'bar',
+        data: {
+            labels: [""" + year_labels + """],
+            datasets: [
+    """)
+
+    # Create a dataset for each age bin
+    for i, bin_label in enumerate(ordered_bins):
+        color = bin_colors[i % len(bin_colors)]
+        data_values = []
+        for yr in sorted_years:
+            data_values.append(str(years_set.get(yr, {}).get(bin_label, 0)))
+
+        print("""
+            {{
+                label: '{}',
+                data: [{}],
+                backgroundColor: '{}',
+                borderColor: '{}',
+                borderWidth: 1
+            }},
+        """.format(bin_label, ",".join(data_values), color, color))
+
+    print("""
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Baptisms by Age Group per Year',
+                    font: { size: 16 }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        footer: function(tooltipItems) {
+                            var total = 0;
+                            tooltipItems.forEach(function(item) { total += item.parsed.y; });
+                            return 'Total: ' + total;
+                        }
+                    }
+                },
+                legend: {
+                    position: 'top',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 10,
+                        font: { size: 11 }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true,
+                    title: {
+                        display: true,
+                        text: '""" + ("Fiscal Year" if Config.USE_FISCAL_YEAR else "Year") + """'
+                    }
+                },
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { precision: 0 },
+                    title: {
+                        display: true,
+                        text: 'Number of Baptisms'
+                    }
+                }
+            }
+        }
+    });
     </script>
     """)
+
+    # Render data table with short column headers and clickable numbers
+    print("""
+    <div class="row">
+        <div class="col-md-12">
+            <h3>Baptism Age Breakdown by Year</h3>
+            <p class="text-muted"><small>Click any number to see the people in that group.</small></p>
+            <div class="table-responsive">
+                <table class="table table-striped table-condensed">
+                    <thead>
+                        <tr>
+                            <th>Year</th>
+                            <th>Total</th>
+    """)
+    for bin_label in ordered_bins:
+        print('<th style="text-align:center">{}</th>'.format(short_labels.get(bin_label, bin_label)))
+    print("""
+                        </tr>
+                    </thead>
+                    <tbody>
+    """)
+
+    # Table rows in descending year order
+    for yr in sorted(years_set.keys(), reverse=True):
+        yr_data = years_set[yr]
+        total = sum(yr_data.get(b, 0) for b in ordered_bins)
+        print('<tr>')
+        print('<td>{}{}</td>'.format(get_year_label(), yr))
+        print('<td><strong>{}</strong></td>'.format(total))
+        for bin_label in ordered_bins:
+            count = yr_data.get(bin_label, 0)
+            pct = int(round(count * 100.0 / total)) if total > 0 else 0
+            if count > 0:
+                print('<td style="text-align:center"><a href="javascript:void(0)" onclick="baptismDrill({}, \'{}\')" style="cursor:pointer;color:#667eea;text-decoration:underline">{}</a> ({}%)</td>'.format(yr, bin_label.replace("'", "\\'"), count, pct))
+            else:
+                print('<td style="text-align:center">0 (0%)</td>')
+        print('</tr>')
+
+    print("""
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    """)
+
+    # Age group key/legend
+    print("""
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Age Group Key</strong></div>
+                <div class="panel-body">
+                    <table class="table table-condensed" style="margin-bottom:0">
+                        <tbody>
+                            <tr><td style="width:60px"><strong>PS</strong></td><td>Preschool (0-4)</td></tr>
+                            <tr><td><strong>CH</strong></td><td>Children (5-9)</td></tr>
+                            <tr><td><strong>PT</strong></td><td>Preteen (10-11)</td></tr>
+                            <tr><td><strong>MS</strong></td><td>Middle School (12-14)</td></tr>
+                            <tr><td><strong>HS</strong></td><td>High School (15-18)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    """)
+
+    # Modal HTML and JavaScript for drill-down
+    print("""
+    <!-- Baptism Drill-Down Modal -->
+    <div id="baptismModal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background-color:rgba(0,0,0,0.5); overflow:auto;">
+        <div style="background-color:#fff; margin:50px auto; padding:0; border:1px solid #888; width:90%; max-width:700px; border-radius:8px; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <div id="baptismModalHeader" style="padding:12px 20px; border-bottom:1px solid #e5e7eb; display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius:8px 8px 0 0;">
+                <span id="baptismModalTitle" style="color:white; font-size:16px; font-weight:bold;"></span>
+                <span onclick="closeBaptismModal()" style="color:white; font-size:24px; font-weight:bold; cursor:pointer; line-height:1;">&times;</span>
+            </div>
+            <div id="baptismModalContent" style="padding:15px; max-height:500px; overflow-y:auto;">
+                <div style="text-align:center; padding:20px;"><i class="fa fa-spinner fa-spin"></i> Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function baptismDrill(year, bin) {
+        var modal = document.getElementById('baptismModal');
+        var content = document.getElementById('baptismModalContent');
+        var title = document.getElementById('baptismModalTitle');
+
+        title.textContent = 'FY' + year + ' - ' + bin;
+        content.innerHTML = '<div style="text-align:center; padding:20px;"><i class="fa fa-spinner fa-spin"></i> Loading...</div>';
+        modal.style.display = 'block';
+
+        var baseUrl = window.location.pathname;
+        var url = baseUrl + '?baptism_drill=true&yr=' + encodeURIComponent(year) + '&bin=' + encodeURIComponent(bin);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, true);
+        xhr.onload = function() {
+            if (xhr.status === 200) {
+                var resp = xhr.responseText;
+                var startMarker = '<!-- AJAX_CONTENT_START -->';
+                var endMarker = '<!-- AJAX_CONTENT_END -->';
+                var s = resp.indexOf(startMarker);
+                var e = resp.indexOf(endMarker);
+                if (s !== -1 && e !== -1) {
+                    content.innerHTML = resp.substring(s + startMarker.length, e);
+                } else {
+                    content.innerHTML = '<div class="alert alert-danger">Could not parse response.</div>';
+                }
+            } else {
+                content.innerHTML = '<div class="alert alert-danger">Error loading data.</div>';
+            }
+        };
+        xhr.onerror = function() {
+            content.innerHTML = '<div class="alert alert-danger">Network error.</div>';
+        };
+        xhr.send();
+    }
+
+    function closeBaptismModal() {
+        document.getElementById('baptismModal').style.display = 'none';
+    }
+
+    // Close modal on Escape key or clicking outside
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closeBaptismModal();
+    });
+    document.getElementById('baptismModal').addEventListener('click', function(e) {
+        if (e.target === this) closeBaptismModal();
+    });
+    </script>
+    """)
+
+
 
 def format_date_display(date_str):
     """Format date for display"""
@@ -2211,59 +3422,220 @@ def get_fiscal_year_sql():
             ELSE YEAR({0}) - 1
         END""".format("{0}", Config.FISCAL_YEAR_START_MONTH)
 
+def campus_filter(alias='p'):
+    """Return SQL fragment for campus filtering. Empty string when All Campuses."""
+    if Config.CAMPUS_ID > 0:
+        if alias:
+            return " AND {}.CampusId = {}".format(alias, Config.CAMPUS_ID)
+        return " AND CampusId = {}".format(Config.CAMPUS_ID)
+    return ""
+
 def get_year_label():
     """Get label for year display"""
     if Config.USE_FISCAL_YEAR:
         return "FY"
     return ""
 
-# Add print styles
-print("""
-<style>
-@media print {
-    .btn { display: none; }
-    .page-break { page-break-before: always; }
-}
-.panel {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    margin-bottom: 20px;
-}
-.panel-body {
-    padding: 15px;
-}
-.panel-heading {
-    padding: 10px 15px;
-    background-color: #f5f5f5;
-    border-bottom: 1px solid #ddd;
-    border-radius: 3px 3px 0 0;
-}
-.panel-primary .panel-body {
-    background-color: #f0f4ff;
-}
-.panel-success .panel-body {
-    background-color: #f0fff4;
-}
-.panel-info .panel-body {
-    background-color: #f0faff;
-}
-.panel-danger .panel-body {
-    background-color: #fff0f0;
-}
-h2 {
-    margin-top: 30px;
-    margin-bottom: 20px;
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
-}
-h3 {
-    margin-top: 20px;
-    margin-bottom: 15px;
-}
-</style>
-""")
+def print_report_styles():
+    """Print report-specific CSS styles"""
+    print("""
+    <style>
+    @media print {
+        .btn { display: none; }
+        .page-break { page-break-before: always; }
+    }
+    .table { table-layout: auto; width: 100%; }
+    .table td, .table th { word-wrap: break-word; }
+    canvas { max-width: 100%; }
+    .panel {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        margin-bottom: 20px;
+    }
+    .panel-body {
+        padding: 15px;
+    }
+    .panel-heading {
+        padding: 10px 15px;
+        background-color: #f5f5f5;
+        border-bottom: 1px solid #ddd;
+        border-radius: 3px 3px 0 0;
+    }
+    .panel-primary .panel-body {
+        background-color: #f0f4ff;
+    }
+    .panel-success .panel-body {
+        background-color: #f0fff4;
+    }
+    .panel-info .panel-body {
+        background-color: #f0faff;
+    }
+    .panel-danger .panel-body {
+        background-color: #fff0f0;
+    }
+    h2 {
+        margin-top: 30px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+    }
+    h3 {
+        margin-top: 20px;
+        margin-bottom: 15px;
+    }
+    </style>
+    """)
 
-# Execute main function
-main()
+
+def handle_baptism_drilldown():
+    """Handle baptism drill-down AJAX requests"""
+    import re as _re
+    import urllib as _urllib
+    _qs = str(model.QueryString) if hasattr(model, 'QueryString') else ''
+
+    def _qs_param(name):
+        _m = _re.search(name + r'=([^&]+)', _qs)
+        if _m:
+            return _urllib.unquote(_m.group(1))
+        if hasattr(model.Data, name):
+            return str(getattr(model.Data, name))
+        return None
+
+    _yr = _qs_param('yr')
+    _bin = _qs_param('bin')
+
+    print '<!-- AJAX_CONTENT_START -->'
+    if _yr and _bin:
+        _fiscal_year_sql = get_fiscal_year_sql().format("p.BaptismDate")
+
+        _age_at_baptism = """CASE
+            WHEN p.BDate IS NOT NULL THEN
+                DATEDIFF(year, p.BDate, p.BaptismDate)
+                - CASE WHEN DATEADD(year, DATEDIFF(year, p.BDate, p.BaptismDate), p.BDate) > p.BaptismDate THEN 1 ELSE 0 END
+            ELSE p.Age
+        END"""
+
+        _age_filter = ''
+        if _bin == 'Unknown':
+            _age_filter = '({}) IS NULL'.format(_age_at_baptism)
+        else:
+            for _label, _min_age, _max_age in Config.BAPTISM_AGE_BINS:
+                if _label == _bin:
+                    if _max_age >= 150:
+                        _age_filter = '({}) >= {}'.format(_age_at_baptism, _min_age)
+                    else:
+                        _age_filter = '({}) >= {} AND ({}) <= {}'.format(_age_at_baptism, _min_age, _age_at_baptism, _max_age)
+                    break
+
+        if _age_filter:
+            _sql = """
+            SELECT p.PeopleId, p.Name2, p.EmailAddress, p.Age, p.BaptismDate,
+                   ({age_at_baptism}) AS AgeAtBaptism,
+                   ms.Description AS MemberStatus
+            FROM People p WITH (NOLOCK)
+            LEFT JOIN lookup.MemberStatus ms ON p.MemberStatusId = ms.Id
+            WHERE p.BaptismDate IS NOT NULL
+              AND p.IsDeceased = 0
+              AND {fiscal_year} = {yr}
+              AND {age_filter}{campus}
+            ORDER BY p.BaptismDate DESC, p.Name2
+            """.format(
+                age_at_baptism=_age_at_baptism,
+                fiscal_year=_fiscal_year_sql,
+                yr=_yr,
+                age_filter=_age_filter,
+                campus=campus_filter()
+            )
+            _rows = list(q.QuerySql(_sql))
+
+            if _rows:
+                print '<table class="table table-striped table-condensed" style="margin:0">'
+                print '<thead><tr><th>Name</th><th>Age at Baptism</th><th>Baptism Date</th><th>Status</th></tr></thead>'
+                print '<tbody>'
+                for _r in _rows:
+                    _pid = safe_get_value(_r, 'PeopleId', '')
+                    _name = safe_get_value(_r, 'Name2', '')
+                    _aab = safe_get_value(_r, 'AgeAtBaptism', '')
+                    _bd = safe_get_value(_r, 'BaptismDate', '')
+                    _ms = safe_get_value(_r, 'MemberStatus', '')
+                    _bd_str = ''
+                    try:
+                        _bd_str = _bd.ToString("MM/dd/yyyy") if _bd else ''
+                    except:
+                        _bd_str = str(_bd)[:10] if _bd else ''
+                    print '<tr>'
+                    print '<td><a href="/Person2/{}" target="_blank">{}</a></td>'.format(_pid, _name)
+                    print '<td>{}</td>'.format(_aab if _aab != '' else '?')
+                    print '<td>{}</td>'.format(_bd_str)
+                    print '<td>{}</td>'.format(_ms)
+                    print '</tr>'
+                print '</tbody></table>'
+            else:
+                print '<p class="text-muted" style="padding:10px">No records found.</p>'
+        else:
+            print '<p class="text-muted" style="padding:10px">Invalid age bin.</p>'
+    else:
+        print '<p class="text-muted" style="padding:10px">Missing parameters.</p>'
+    print '<!-- AJAX_CONTENT_END -->'
+
+
+# ============================================================
+# MAIN ENTRY POINT
+# ============================================================
+# Routing:
+#   /PyScriptForm/  (GET)              -> Run the report (default)
+#   /PyScriptForm/  (GET ?settings=1)  -> Config UI
+#   /PyScriptForm/  (POST)             -> AJAX handlers
+# ============================================================
+
+# Check for baptism drill-down AJAX
+_baptism_drilldown = False
+try:
+    if hasattr(Data, 'baptism_drill') and str(Data.baptism_drill) == 'true':
+        _baptism_drilldown = True
+except:
+    pass
+
+# Check for settings mode (GET ?settings=1)
+_show_settings = False
+try:
+    if hasattr(Data, 'settings') and str(Data.settings) == '1':
+        _show_settings = True
+except:
+    pass
+
+# Check for campus override from URL (?campus=X)
+try:
+    if hasattr(Data, 'campus') and Data.campus is not None and str(Data.campus) != '':
+        _active_config['campusId'] = int(str(Data.campus))
+except:
+    pass
+
+if _baptism_drilldown:
+    # Baptism age-bin drilldown (AJAX from report page)
+    handle_baptism_drilldown()
+elif model.HttpMethod == "post":
+    action = get_form_data('action', '')
+    if action:
+        # AJAX config handlers (save/load/campuses/programs)
+        handle_ajax()
+    else:
+        print json.dumps({'success': False, 'message': 'No action specified'})
+elif _show_settings:
+    # GET with ?settings=1 -> Show config UI
+    model.Header = TITLE + " - Settings"
+    model.Form = generate_ui()
+else:
+    # GET (default) -> Run the report
+    # Capture print output into model.Form so it renders inside the TP page frame
+    _old_stdout = sys.stdout
+    _buffer = StringIO()
+    sys.stdout = _buffer
+    try:
+        print_report_styles()
+        main()
+    finally:
+        sys.stdout = _old_stdout
+    model.Form = _buffer.getvalue()
 
 # End of report
