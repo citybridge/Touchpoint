@@ -43,6 +43,7 @@ These are the tools churches ask about most and install first:
 Fresh tools hot off the workbench:
 - ✨ **[Involvement Processor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Processor)**: Comprehensive involvement registrant processing
 - ✨ **[Menu Editor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Menu%20Editor)**: Visual editor to People, Involvement, Finance, Admin, and Blue Toolbar menus
+- ✨ **[Program Pulse](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Program%20Pulse)**: Surface what is happening across programs
 - ✨ **[Report Writer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Report%20Writer)**: Inv. and User Report Writer
 
 ## 🌟 Tool Categories
@@ -71,6 +72,7 @@ Uncover hidden patterns and proactively engage with your community
 - **[Live Search](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Live%20Search)**: Advanced, real-time member search with quick actions
 - **[Auxiliary to Group Analytics](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Auxiliary%20to%20Group%20Analytics)**: Analyze program effectiveness in driving group participation
 - **[Lapsed Attenders](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Lapsed%20Attenders)**: Proactive member engagement tracking
+- **[Program Pulse](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Program%20Pulse)**: Surface what is happening across programs
 - **[User Activity](https://github.com/bswaby/Touchpoint/tree/main/TPxi/User%20Activity)**: System usage and user behavior analysis
 
 ### 💡 Engagement Optimization
