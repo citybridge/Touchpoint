@@ -43,6 +43,7 @@ These are the tools churches ask about most and install first:
 Fresh tools hot off the workbench:
 - ✨ **[Involvement Processor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Processor)**: Comprehensive involvement registrant processing
 - ✨ **[Menu Editor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Menu%20Editor)**: Visual editor to People, Involvement, Finance, Admin, and Blue Toolbar menus
+- ✨ **[Mission Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Mission%20Dashboard)**: New Comprehensive Mission Dashboard
 - ✨ **[Program Pulse](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Program%20Pulse)**: Surface what is happening across programs
 - ✨ **[QuickLinks](https://github.com/bswaby/Touchpoint/blob/main/TPxi/Quicklinks)**: Permissionable QuickLinks Menu with Count Overlay
 - ✨ **[Report Writer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Report%20Writer)**: Inv. and User Report Writer
@@ -115,7 +116,7 @@ Maintain system health, security, and efficiency
 ### 🌍 Specialized Solutions
 Targeted tools for specific ministry needs
 
-- **[Missions Dashboard](https://github.com/bswaby/Touchpoint/tree/main/Missions/MissionsDashboard)**: Comprehensive mission trip management
+- **[Mission Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Mission%20Dashboard)**: Comprehensive Mission Dashboard
 - **[FastLaneCheckIn](https://github.com/bswaby/Touchpoint/tree/main/TPxi/FastLaneCheckIn)**: Streamlined large-event check-in system
 
 ## 🔍 Getting Started
