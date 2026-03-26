@@ -5,12 +5,13 @@ A 2-part system for managing and displaying customizable quick-access links on y
 With this tool, you can:
 
 - Organize links into collapsible categories with role-based visibility
+- Schedule expiration date for links to disappear after a certain date
 - Display count badges from live SQL queries (open tasks, member counts, etc.)
-- Group large categories into inline subgroups or clickable popup tiles
+- Group large categories into inline subgroups or clickable pop-up tiles
 - Nest popup subgroups inside inline subgroups for cleaner organization
 - Auto-hide seasonal links with expiration dates
-- Drag-and-drop to reorder everything — no manual priority numbers
-- Manage all configuration through a visual admin UI with guided tour
+- Drag-and-drop to reorder everything. No manual priority numbers
+- Manage all configuration through a visual admin UI with a guided tour
 - Backup and restore configurations with full version history
 
 ---
@@ -40,7 +41,7 @@ A visual admin interface for managing the widget configuration. The unified Stru
 Each link is configured with a label, URL, icon, category, optional subgroup, role permissions, count query, org ID, and expiration date. Inline help tooltips explain every field.
 
 <p align="center">
-  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/QuickLlinks/QL3.png" width="500" alt="QuickLinks Admin - Icon Configuration Modal">
+  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/Quicklinks/QL3.png" width="500" alt="QuickLinks Admin - Icon Configuration Modal">
 </p>
 
 ---
