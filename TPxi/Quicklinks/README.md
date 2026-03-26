@@ -1,6 +1,6 @@
 # QuickLinks
 
-A 2-part system for managing and displaying customizable quick-access links on your TouchPoint homepage. Admins configure links, categories, subgroups, and count badges through a visual admin UI — users see a clean, permission-filtered widget on their dashboard.
+A 2-part system for managing and displaying customizable quick-access links on your TouchPoint homepage. Admins configure links, categories, subgroups, and count badges through a visual admin UI.  Users see a clean, permission-filtered widget on their dashboard.
 
 With this tool, you can:
 
