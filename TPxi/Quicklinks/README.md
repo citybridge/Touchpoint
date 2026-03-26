@@ -20,7 +20,7 @@ With this tool, you can:
 The homepage widget that displays your configured links. Categories expand/collapse, icons show count badges, and everything respects role permissions. Subgroups organize large categories into sections or clickable popup menus.
 
 <p align="center">
-  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/QuickLinks/QL1.png" width="400" alt="QuickLinks Widget on Homepage">
+  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/Quicklinks/QL1.png" width="400" alt="QuickLinks Widget on Homepage">
 </p>
 
 ---
@@ -30,7 +30,7 @@ The homepage widget that displays your configured links. Categories expand/colla
 A visual admin interface for managing the widget configuration. The unified Structure tab shows categories, subgroups, and links in a collapsible tree with drag-and-drop reordering. Includes a guided tour for first-time users and inline help tooltips on every form field.
 
 <p align="center">
-  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/QuickLinks/QL2.png" width="700" alt="QuickLinks Admin - Structure Tab">
+  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/Quicklinks/QL2.png" width="700" alt="QuickLinks Admin - Structure Tab">
 </p>
 
 ---
@@ -40,7 +40,7 @@ A visual admin interface for managing the widget configuration. The unified Stru
 Each link is configured with a label, URL, icon, category, optional subgroup, role permissions, count query, org ID, and expiration date. Inline help tooltips explain every field.
 
 <p align="center">
-  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/QuickLinks/QL3.png" width="500" alt="QuickLinks Admin - Icon Configuration Modal">
+  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/QuickLlinks/QL3.png" width="500" alt="QuickLinks Admin - Icon Configuration Modal">
 </p>
 
 ---
@@ -50,7 +50,7 @@ Each link is configured with a label, URL, icon, category, optional subgroup, ro
 Define SQL queries that display live count badges on icons. Queries can reference an organization ID or the current user's ID. Test queries directly from the admin UI.
 
 <p align="center">
-  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/QuickLinks/QL4.png" width="700" alt="QuickLinks Admin - Count Queries Tab">
+  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/Quicklinks/QL4.png" width="700" alt="QuickLinks Admin - Count Queries Tab">
 </p>
 
 ---
