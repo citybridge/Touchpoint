@@ -44,6 +44,7 @@ Fresh tools hot off the workbench:
 - ✨ **[Involvement Processor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Processor)**: Comprehensive involvement registrant processing
 - ✨ **[Menu Editor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Menu%20Editor)**: Visual editor to People, Involvement, Finance, Admin, and Blue Toolbar menus
 - ✨ **[Program Pulse](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Program%20Pulse)**: Surface what is happening across programs
+- ✨ **[QuickLinks](https://github.com/bswaby/Touchpoint/blob/main/TPxi/Quicklinks)**: Permissionable QuickLinks Menu with Count Overlay
 - ✨ **[Report Writer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Report%20Writer)**: Inv. and User Report Writer
 
 ## 🌟 Tool Categories
@@ -79,7 +80,7 @@ Uncover hidden patterns and proactively engage with your community
 Streamline communication and access for ministry leaders
 
 - **[TaskNote Activity Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/TaskNote%20Activity%20Dashboard)**: Monitor task and note activities
-- **[QuickLinks Widget](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Widget%20QuickLinks)**: Customizable, permission-based quick access
+- **[QuickLinks](https://github.com/bswaby/Touchpoint/blob/main/TPxi/Quicklinks)**: Permissionable QuickLinks Menu with Count Overlay
 - **[Involvement Owner Audit](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Notification%20Audit%20Tool)**: Track involvement leadership and ownership
 
 ### 💰 Financial Management
