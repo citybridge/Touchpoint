@@ -16,6 +16,15 @@
 #Advanced ~ Special Content and then click on the python tab
 
 #####################################################################
+##Updates
+#20260106 | Improved error handling for Null values
+
+#####################################################################
+###Author
+# Created By: Ben Swaby
+# Email: bswaby@fbchtn.org
+
+#####################################################################
 ####USER CONFIG FIELDS
 #####################################################################
 #User config is done within the script itself.  Just copy this script to 
@@ -928,7 +937,12 @@ else:
         GrandTotal += d.General + d.Designated + d.NonContribution
     
         # Format Bundle Status
-        BundleStatus = d.BundleStatus if d.BundleStatus == "Closed" else "<b>{}</b>".format(d.BundleStatus)
+        if d.BundleStatus is None:
+            BundleStatus = "<b>No Bundle</b>"
+        elif d.BundleStatus == "Closed":
+            BundleStatus = d.BundleStatus
+        else:
+            BundleStatus = "<b>{}</b>".format(d.BundleStatus)
     
         # Contribution Type
         ContributionType = "" if d.ContributionTypeCount > 1 else (d.CommaSeparatedList or "")
@@ -1103,6 +1117,8 @@ else:
             GrandTotalFund += fs.General + fs.Designated + fs.NonContribution
             if fs.BundleStatus == 'Closed':
                 BundleStatus = fs.BundleStatus
+            elif fs.BundleStatus is None:
+                BundleStatus = '<b>No Bundle</b>'
             else:
                 BundleStatus = '<b>' + fs.BundleStatus + '</b>'
         
@@ -1245,12 +1261,17 @@ else:
                                                       ,checkNeg(fd.Designated)
                                                       ,checkNeg(fd.NonContribution))
 
-                if dd.BundleStatus != 'Closed':
+                if dd.BundleStatus is None:
+                    BundleStatus = '<b>No Bundle</b>'
+                elif dd.BundleStatus != 'Closed':
                     BundleStatus = '<b>' + dd.BundleStatus + '</b>'
                 else:
                     BundleStatus = dd.BundleStatus
-                
-                ReferenceId = '''<a href="/Batches/Detail/''' + str(dd.BundleHeaderId) + '''" target="_blank">''' + dd.ReferenceId + '''</a>&nbsp<a href="/PyScript/''' + BundleReportName + '''?p1=''' + str(dd.BundleHeaderId) + '''" target="_blank"><i class="fa fa-bar-chart" aria-hidden="true"></i></a>'''
+
+                if dd.BundleHeaderId is None or dd.ReferenceId is None:
+                    ReferenceId = '<i>No Bundle</i>'
+                else:
+                    ReferenceId = '''<a href="/Batches/Detail/''' + str(dd.BundleHeaderId) + '''" target="_blank">''' + dd.ReferenceId + '''</a>&nbsp<a href="/PyScript/''' + BundleReportName + '''?p1=''' + str(dd.BundleHeaderId) + '''" target="_blank"><i class="fa fa-bar-chart" aria-hidden="true"></i></a>'''
 
                 template += '''
                             <tr>
