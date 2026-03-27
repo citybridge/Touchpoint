@@ -90,6 +90,7 @@ Simplify and streamline financial tracking and reporting
 - **[Involvement with Fees](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvements%20with%20Fees)**: Fee-based involvement tracking
 - **[Payment Manager](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Payment%20Manager)**: Outstanding payment tracking and management
 - **[Deposit Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Deposit%20Report)**: Comprehensive deposit reconciliation
+- **[Find Funds in Batch](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Find%20Funds%20in%20Batch)**: Find batches that contain specific funds
 - **[Fortis Fees](https://github.com/bswaby/Touchpoint/tree/main/Finance/FortisFees)**: Automated fee breakdown
 - **[Giving Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Giving%20Dashboard)**: Bring clarity, flexibility, and insight to financial stewardship.
 - **[Statement Audit Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Statement%20Audit)**: Get counts and work through statement issues for electronic and printed statements
