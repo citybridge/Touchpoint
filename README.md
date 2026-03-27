@@ -93,7 +93,7 @@ Simplify and streamline financial tracking and reporting
 - **[Fortis Fees](https://github.com/bswaby/Touchpoint/tree/main/Finance/FortisFees)**: Automated fee breakdown
 - **[Giving Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Giving%20Dashboard)**: Bring clarity, flexibility, and insight to financial stewardship.
 - **[Statement Audit Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Statement%20Audit)**: Get counts and work through statement issues for electronic and printed statements
-- **[QCD-Grant Letters](https://github.com/bswaby/Touchpoint/tree/main/Finance/QCD-GrantLetters)**: Automated grant and QCD letter generation
+- **[QCD-Grant Letters](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Finance%20Grant-QCD%20Letter)**: Automated grant and QCD letter generation
 - **[Weekly Contribution Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Contribution%20Report)**: Detailed financial reporting
 
 ### 🛠️ Administrative & System Tools
