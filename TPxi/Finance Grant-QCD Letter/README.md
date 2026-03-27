@@ -19,7 +19,7 @@ With this tool, you can:
 Choose a date range to pull all QCD and Grant contributions. The script queries by batch type to automatically separate the two letter types. Optionally enable writing letters as notes on each person's record.
 
 <p align="center">
-  <img src="https://github.com/bswaby/Touchpoint/raw/main/Finance/screenshots/QCDGrantScreenShot.png" width="700" alt="QCD Grant Letters - Report Selection">
+  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/Finance%20Grant-QCD%20Letter/QCDGrantScreenShot.png" width="700" alt="QCD Grant Letters - Report Selection">
 </p>
 
 ---
@@ -29,7 +29,7 @@ Choose a date range to pull all QCD and Grant contributions. The script queries 
 IRS-compliant Qualified Charitable Distribution letter acknowledging the gift was received directly from the plan trustee. Includes required language about public charity status, no goods/services exchanged, and the distinction between QCD and tax-deductible gifts.
 
 <p align="center">
-  <img src="https://github.com/bswaby/Touchpoint/raw/main/Finance/screenshots/QCDLetteer.png" width="500" alt="QCD Letter Example">
+  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/Finance%20Grant-QCD%20Letter/QCDLetteer.png" width="500" alt="QCD Letter Example">
 </p>
 
 ---
@@ -39,7 +39,7 @@ IRS-compliant Qualified Charitable Distribution letter acknowledging the gift wa
 Acknowledgment letter for contributions received through donor-advised funds. A simpler format thanking the donor and confirming the gift amount, date, and originating fund.
 
 <p align="center">
-  <img src="https://github.com/bswaby/Touchpoint/raw/main/Finance/screenshots/GrantLetter.png" width="500" alt="Grant Letter Example">
+  <img src="https://github.com/bswaby/Touchpoint/raw/main/TPxi/Finance%20Grant-QCD%20Letter/GrantLetter.png" width="500" alt="Grant Letter Example">
 </p>
 
 ---
