@@ -1,0 +1,663 @@
+# Written By: Ben Swaby
+# Email: bswaby@fbchtn.org
+# GitHub:  https://github.com/bswaby/Touchpoint
+# ---------------------------------------------------------------
+# Support: These tools are free because they should be. If they've
+#          saved you time, consider DisplayCache — church digital
+#          signage that integrates with TouchPoint.
+#          https://displaycache.com
+# ---------------------------------------------------------------
+
+"""
+Fortis Fees Report Generator
+===========================
+A comprehensive tool for finance teams to calculate and export processing fees 
+for backcharging ministry programs based on TouchPoint transaction data.
+
+Features:
+- Multi-payment type fee calculations (ACH, Credit Card, Amex)
+- Date-filtered reporting with flexible date logic
+- Professional HTML report with responsive design
+- CSV export functionality for external analysis
+- Comprehensive error handling and user feedback
+
+--Upload Instructions Start--
+To upload code to Touchpoint, use the following steps.
+1. Click Admin ~ Advanced ~ Special Content ~ Python
+2. Click New Python Script File
+3. Name the Python and paste all this code
+4. Test and optionally add to menu
+--Upload Instructions End--
+
+Version: 2.1 
+"""
+
+#####################################################################
+#### WORKFLOW OVERVIEW
+#####################################################################
+# ::WORKFLOW::
+# 1. Initialize Configuration & Error Handling
+# 2. Setup Fee Calculation Variables  
+# 3. Define Utility Functions (Currency, CSV, Loading)
+# 4. Build Dynamic SQL Query with CTEs
+# 5. Handle Form Submission & Export Requests
+# 6. Execute Query & Process Results
+# 7. Generate Output (HTML Report OR CSV Download)
+# 8. Display Final Results with User Feedback
+
+#####################################################################
+####USER CONFIGURATION SECTION
+#####################################################################
+
+# ::START:: Configuration Setup
+class FortisConfig:
+    """
+    Centralized configuration class for easy customization across different churches
+    Modify these values to match your organization's fee structure
+    """
+    def __init__(self):
+        # ::STEP:: Page Configuration
+        self.page_title = 'Fortis Fees Report'
+        
+        # ::STEP:: ACH Fee Configuration
+        self.ach_percent = 0.05      # 5% - Adjust for your ACH rate
+        self.ach_per_transaction = 0.50 # $0.50 per transaction
+        self.ach_payment_type = 'B'     # TouchPoint payment type code
+        
+        # ::STEP:: Credit Card Fee Configuration  
+        self.cc_percent = 0.05         # 5% - Adjust for your CC rate
+        self.cc_per_transaction = 0.50  # $0.50 per transaction
+        self.cc_payment_type = 'C'      # TouchPoint payment type code
+        
+        # ::STEP:: American Express Fee Configuration
+        self.amex_percent = 0.05       # 5% - Often higher than standard CC
+        self.amex_per_transaction = 0.50 # $0.50 per transaction
+        self.amex_payment_type = 'C'    # TouchPoint payment type code
+
+# Initialize configuration
+config = FortisConfig()
+# ::END:: Configuration Setup
+
+#####################################################################
+####SYSTEM INITIALIZATION
+#####################################################################
+
+# ::START:: System Initialization & Error Handling
+initialization_successful = True
+try:
+    # ::STEP:: Import Required Libraries
+    import datetime
+    from decimal import Decimal
+    import csv
+    import StringIO
+    import traceback
+    import re
+    
+    # ::STEP:: Set Page Header
+    model.Header = config.page_title
+    
+    # ::STEP:: Initialize Variables
+    current_date = datetime.date.today().strftime("%B %d, %Y")
+    
+    # ::STEP:: Safe Form Data Access
+    # TouchPoint requires careful handling of model.Data attributes
+    try:
+        sDate = str(model.Data.sDate) if hasattr(model.Data, 'sDate') and model.Data.sDate else None
+    except:
+        sDate = None
+        
+    try:
+        eDate = str(model.Data.eDate) if hasattr(model.Data, 'eDate') and model.Data.eDate else None
+    except:
+        eDate = None
+        
+    try:
+        export_csv = str(model.Data.export_csv) if hasattr(model.Data, 'export_csv') else None
+    except:
+        export_csv = None
+
+except Exception as e:
+    initialization_successful = False
+    print "<h2>System Initialization Error</h2>"
+    print "<p>Failed to initialize the reporting system: " + str(e) + "</p>"
+    print "<pre>"
+    traceback.print_exc()
+    print "</pre>"
+    model.Header = "Fortis Fees - Error"
+# ::END:: System Initialization & Error Handling
+
+#####################################################################
+####UTILITY FUNCTIONS
+#####################################################################
+
+# ::START:: Currency Formatting Function
+def format_currency(amount, show_dollar=True, use_comma=True):
+    """
+    Formats monetary amounts for display with proper symbols and decimals
+    Compatible with Python 2.7 - handles string/numeric conversion safely
+    """
+    try:
+        # ::STEP:: Input Sanitization
+        if isinstance(amount, str):
+            amount = re.sub(r'[^\d.-]', '', amount)
+        
+        amount = float(amount) if amount else 0.0
+
+        # ::STEP:: Zero Value Handling
+        if amount == 0.00:
+            return "-"
+
+        # ::STEP:: Decimal Place Logic
+        if amount % 1 != 0 or (1 <= amount < 10):
+            formatted = "%.2f" % amount
+        else:
+            formatted = "%.0f" % amount
+
+        # ::STEP:: Thousands Separator Addition
+        if use_comma:
+            parts = formatted.split(".")
+            parts[0] = "{:,}".format(int(parts[0]))
+            formatted = ".".join(parts)
+
+        return ("$" + formatted) if show_dollar else formatted
+    
+    except Exception as e:
+        return "$0.00"
+# ::END:: Currency Formatting Function
+
+# ::START:: CSV Generation Function  
+def generate_csv_data(query_results, totals_dict):
+    """
+    Creates CSV content for download - TouchPoint compatible version
+    Returns CSV string that can be output directly
+    """
+    try:
+        # ::STEP:: Initialize CSV Components
+        output = StringIO.StringIO()
+        writer = csv.writer(output)
+        
+        # ::STEP:: Write Headers
+        headers = ['Program', 'Accounting Code', 'Transaction Amount', 'CC Fees', 
+                  'Amex Fees', 'ACH Fees', 'Card Fees Total', 'All Fees Total']
+        writer.writerow(headers)
+        
+        # ::STEP:: Write Data Rows
+        for f in query_results:
+            cardFees = (f.CCFees if f.CCFees is not None else Decimal(0)) + \
+                      (f.AmexFees if f.AmexFees is not None else Decimal(0))
+            totalFees = cardFees + (f.ACHFees if f.ACHFees is not None else Decimal(0))
+            
+            writer.writerow([
+                f.Program if f.Program is not None else "",
+                f.AccountingCode if f.AccountingCode is not None else "",
+                f.Amount if f.Amount is not None else 0,
+                f.CCFees if f.CCFees is not None else 0,
+                f.AmexFees if f.AmexFees is not None else 0,
+                f.ACHFees if f.ACHFees is not None else 0,
+                float(cardFees),
+                float(totalFees)
+            ])
+        
+        # ::STEP:: Write Grand Totals
+        writer.writerow([
+            "GRAND TOTALS", "", 
+            totals_dict['total_amount'], totals_dict['total_cc'],
+            totals_dict['total_amex'], totals_dict['total_ach'],
+            totals_dict['total_card_fees'], totals_dict['total_all_fees']
+        ])
+        
+        csv_content = output.getvalue()
+        output.close()
+        return csv_content
+        
+    except Exception as e:
+        return "Error generating CSV: " + str(e)
+# ::END:: CSV Generation Function
+
+# ::START:: Loading Indicator Function
+def show_loading_indicator():
+    """
+    Displays a loading message for better user experience
+    """
+    return '''
+    <div id="loadingIndicator" style="
+        position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        background: rgba(0,0,0,0.8); color: white; padding: 20px 40px;
+        border-radius: 10px; z-index: 9999; display: none;">
+        <div style="text-align: center;">
+            <div style="border: 4px solid #f3f3f3; border-top: 4px solid #3498db; 
+                       border-radius: 50%; width: 30px; height: 30px; 
+                       animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
+            Processing report... Please wait.
+        </div>
+    </div>
+    <style>
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+    <script>
+        function showLoading() { document.getElementById('loadingIndicator').style.display = 'block'; }
+        function hideLoading() { document.getElementById('loadingIndicator').style.display = 'none'; }
+    </script>
+    '''
+# ::END:: Loading Indicator Function
+
+#####################################################################
+####SQL QUERY CONSTRUCTION
+#####################################################################
+
+# ::START:: SQL Query Builder
+def build_report_query():
+    """
+    Constructs the main SQL query with CTEs for fee calculations
+    Uses numbered placeholders for .format() method
+    """
+    return '''
+-- ::CTE:: FilteredTransactions - Handle different date filtering for payment types
+WITH FilteredTransactions AS (
+    SELECT 
+        t.*,
+        f.SettleDate,
+        f.AccountType,
+        f.FortisWebHookTransactionId
+    FROM [Transaction] t 
+    LEFT JOIN [FortisWebhookTransactions] f ON f.FortisWebHookTransactionId = t.TransactionId
+    WHERE 
+        (
+            -- ACH transactions use SettleDate from Fortis webhook
+            (t.PaymentType = '{4}' AND f.SettleDate BETWEEN '{0}' AND '{1} 23:59:59.999')
+            OR
+            -- Other transactions use standard settled date
+            (t.PaymentType <> '{4}' AND t.settled BETWEEN '{0}' AND '{1} 23:59:59.999')
+        )
+        AND t.TransactionId IS NOT NULL
+        AND t.voided IS NULL
+),
+-- ::CTE:: ExtractedData - Calculate fees and extract organization data
+ExtractedData AS (
+    SELECT 
+        pro.Name AS Program,
+        o.OrganizationId,
+        CASE 
+            WHEN o.RegAccountCodeId IS NOT NULL THEN CAST(o.RegAccountCodeId AS NVARCHAR(50))
+            ELSE o.RegSettingXML.value('(/Settings/Fees/AccountingCode)[1]', 'NVARCHAR(50)')
+        END AS AccountingCode,
+        ft.amt AS Amount,
+        -- CC Fee Calculation (non-Amex)
+        CASE 
+            WHEN ft.PaymentType = '{7}' AND ft.AccountType <> 'amex'
+            THEN CEILING(((ft.amt * {5}) + {6} + 0.00001) * 100) / 100
+            ELSE 0 
+        END AS CCFees,
+        -- Amex Fee Calculation
+        CASE 
+            WHEN ft.PaymentType = '{10}' AND ft.AccountType = 'amex'
+            THEN CEILING(((ft.amt * {8}) + {9} + 0.00001) * 100) / 100
+            ELSE 0 
+        END AS AmexFees,
+        -- ACH Fee Calculation
+        CASE 
+            WHEN ft.PaymentType = '{4}' 
+            THEN CEILING(((ft.amt * {2}) + {3} + 0.00001) * 100) / 100
+            ELSE 0 
+        END AS ACHFees
+    FROM FilteredTransactions ft
+    LEFT JOIN Organizations o ON o.OrganizationId = ft.OrgId
+    LEFT JOIN Division d ON d.Id = o.DivisionId
+    LEFT JOIN Program pro ON pro.Id = d.ProgId
+)
+-- ::QUERY:: Final Results - Group and sum by program and accounting code
+SELECT 
+    ed.Program,
+    CONCAT(ac.Description, ' (', ac.Code, ')') AS AccountingCode,
+    SUM(ed.Amount) AS Amount,
+    SUM(ed.CCFees) AS CCFees,
+    SUM(ed.AmexFees) AS AmexFees,
+    SUM(ed.ACHFees) AS ACHFees
+FROM ExtractedData ed
+LEFT JOIN lookup.AccountCode ac ON ac.Id = ed.AccountingCode
+GROUP BY ed.Program, ac.Code, ac.Description
+ORDER BY ed.Program;
+'''
+# ::END:: SQL Query Builder
+
+#####################################################################
+####HTML TEMPLATE GENERATION
+#####################################################################
+
+# ::START:: HTML Template Builder
+def build_html_template(start_date_value="", end_date_value=""):
+    """
+    Generates the main HTML template with form and table structure
+    Includes responsive design and TouchPoint-compatible styling
+    """
+    return '''
+    <style>
+        .fortis-container {{
+            max-width: 1200px; margin: 0 auto; padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }}
+        .form-container {{
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 25px; border-radius: 12px; margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }}
+        .form-container label {{
+            color: white; font-weight: 600; margin-right: 10px; font-size: 14px;
+        }}
+        .form-container input[type="date"] {{
+            padding: 8px 12px; border: none; border-radius: 6px;
+            margin: 0 15px 0 5px; font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }}
+        .form-container input[type="submit"] {{
+            background: #4CAF50; color: white; padding: 10px 20px;
+            border: none; border-radius: 6px; cursor: pointer;
+            font-weight: 600; font-size: 14px; margin-left: 10px;
+            transition: background 0.3s ease; min-height: 44px;
+        }}
+        .form-container input[type="submit"]:hover {{ background: #45a049; }}
+        .csv-button {{ background: #17a2b8 !important; }}
+        .csv-button:hover {{ background: #138496 !important; }}
+        .report-table {{
+            width: 100%; border-collapse: collapse; background: white;
+            border-radius: 12px; overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }}
+        .report-table th {{
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white; padding: 15px 12px; text-align: left;
+            font-weight: 600; font-size: 13px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }}
+        .report-table td {{
+            padding: 12px; border-bottom: 1px solid #ecf0f1; font-size: 14px;
+        }}
+        .report-table tr:hover {{ background-color: #f8f9fa; }}
+        .amount-col {{ text-align: right; font-weight: 500; }}
+        .fee-col {{ text-align: right; font-weight: 500; color: #e74c3c; }}
+        .card-total-col {{ 
+            text-align: right; font-weight: 600; color: #f39c12;
+            background-color: #fef9e7;
+        }}
+        .total-col {{ 
+            text-align: right; font-weight: 700; color: #27ae60;
+            background-color: #eafaf1;
+        }}
+        .grand-total-row {{
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white; font-weight: 700;
+        }}
+        .grand-total-row td {{ border-bottom: none; padding: 15px 12px; }}
+        .disclaimer {{
+            background: #f8f9fa; border-left: 4px solid #17a2b8;
+            padding: 15px 20px; margin-top: 20px;
+            border-radius: 0 8px 8px 0; font-size: 13px;
+            color: #495057; line-height: 1.5;
+        }}
+        .disclaimer-title {{ font-weight: 600; color: #17a2b8; margin-bottom: 8px; }}
+        .error-container {{
+            background: #f8d7da; border: 1px solid #f5c6cb;
+            color: #721c24; padding: 15px; border-radius: 8px;
+            margin: 20px 0;
+        }}
+        .success-container {{
+            background: #d4edda; border: 1px solid #c3e6cb;
+            color: #155724; padding: 15px; border-radius: 8px;
+            margin: 20px 0;
+        }}
+    </style>
+    {loading_indicator}
+    <div class="fortis-container">
+        <div class="form-container">
+            <form action="" method="GET" onsubmit="showLoading()">
+                <label for="sDate">Start Date:</label>
+                <input type="date" id="sDate" name="sDate" required {start_date}>
+                <label for="eDate">End Date:</label>
+                <input type="date" id="eDate" name="eDate" required {end_date}>
+                <input type="submit" value="Generate Report">
+                <input type="submit" name="export_csv" value="Export to CSV" class="csv-button">
+            </form>
+        </div>
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Program</th>
+                    <th>Accounting Code</th>
+                    <th>Transaction Amount</th>
+                    <th>CC Fees</th>
+                    <th>Amex Fees</th>
+                    <th>ACH Fees</th>
+                    <th style="background: #f39c12;">Card Fees Total</th>
+                    <th style="background: #27ae60;">All Fees Total</th>
+                </tr>
+            </thead>
+            <tbody>
+'''.format(
+    loading_indicator=show_loading_indicator(),
+    start_date='value="' + start_date_value + '"' if start_date_value else "",
+    end_date='value="' + end_date_value + '"' if end_date_value else ""
+)
+# ::END:: HTML Template Builder
+
+#####################################################################
+####MAIN PROCESSING LOGIC
+#####################################################################
+
+# ::START:: Main Report Processing
+def main_report_logic():
+    """
+    Main report generation function - NO EXIT CALLS
+    Handles all processing logic without using exit()
+    """
+    # ::STEP:: Check for initialization errors first
+    if not initialization_successful:
+        print "<div class='error-container'>"
+        print "<h2>Initialization Error</h2>"
+        print "<p>Report cannot be generated due to system initialization errors.</p>"
+        print "</div>"
+        return
+    
+    try:
+        # ::STEP:: Validate Input Dates
+        if not sDate or not eDate:
+            # Show welcome form when no dates provided
+            print build_html_template()
+            print '''
+                </tbody>
+            </table>
+            <div class="success-container">
+                <strong>Welcome to the Fortis Fees Report!</strong><br>
+                Please select a date range above to generate your fee analysis report.
+            </div>
+        </div>
+        <script>hideLoading();</script>
+        '''
+            return  # Return instead of exit
+
+        # ::STEP:: Build and Execute Query
+        sql_query = build_report_query()
+        
+        # Execute query with parameters
+        rsql = q.QuerySql(sql_query.format(
+            sDate, eDate,  
+            config.ach_percent, config.ach_per_transaction, config.ach_payment_type,
+            config.cc_percent, config.cc_per_transaction, config.cc_payment_type,
+            config.amex_percent, config.amex_per_transaction, config.amex_payment_type
+        ))
+
+        # ::STEP:: Calculate Totals
+        total_amount = total_cc = total_amex = total_ach = 0
+        total_card_fees = total_all_fees = 0
+
+        for f in rsql:
+            cardFees = (f.CCFees or 0) + (f.AmexFees or 0)
+            totalFees = cardFees + (f.ACHFees or 0)
+            
+            total_amount += f.Amount or 0
+            total_cc += f.CCFees or 0
+            total_amex += f.AmexFees or 0
+            total_ach += f.ACHFees or 0
+            total_card_fees += cardFees
+            total_all_fees += totalFees
+
+        # ::STEP:: Handle CSV Export
+        if export_csv:
+            totals_dict = {
+                'total_amount': total_amount, 'total_cc': total_cc,
+                'total_amex': total_amex, 'total_ach': total_ach,
+                'total_card_fees': total_card_fees, 'total_all_fees': total_all_fees
+            }
+            
+            csv_content = generate_csv_data(rsql, totals_dict)
+            filename = "fortis_fees_report_{0}_to_{1}.csv".format(sDate, eDate)
+            
+            # TouchPoint-specific CSV download approach
+            print '''
+            <div class="success-container">
+                <h3>CSV Export Ready</h3>
+                <p>Your CSV export has been generated successfully. Copy the data below and save it as a .csv file:</p>
+                <p><strong>Suggested filename:</strong> {0}</p>
+                <textarea style="width: 100%; height: 300px; font-family: monospace; font-size: 12px;" readonly onclick="this.select()">{1}</textarea>
+                <p><strong>Instructions:</strong></p>
+                <ol>
+                    <li>Click in the text area above to select all content</li>
+                    <li>Copy the selected text (Ctrl+C or Cmd+C)</li>
+                    <li>Open a text editor or Excel</li>
+                    <li>Paste the content and save as a .csv file</li>
+                </ol>
+                <p><a href="javascript:history.back()">← Back to Report</a></p>
+            </div>
+            <script>hideLoading();</script>
+            '''.format(filename, csv_content)
+            return  # Return instead of trying HTTP headers
+
+        # ::STEP:: Generate HTML Report
+        print build_html_template(sDate, eDate)
+        
+        # Generate table rows
+        for f in rsql:
+            cardFees = (f.CCFees or 0) + (f.AmexFees or 0)
+            totalFees = cardFees + (f.ACHFees or 0)
+            
+            print '''
+                    <tr>
+                        <td>{0}</td>
+                        <td>{1}</td>
+                        <td class="amount-col">{2}</td>
+                        <td class="fee-col">{3}</td>
+                        <td class="fee-col">{4}</td>
+                        <td class="fee-col">{5}</td>
+                        <td class="card-total-col">{6}</td>
+                        <td class="total-col">{7}</td>
+                    </tr>
+            '''.format(
+                f.Program or "", f.AccountingCode or "",
+                format_currency(f.Amount or 0),
+                format_currency(f.CCFees or 0),
+                format_currency(f.AmexFees or 0),
+                format_currency(f.ACHFees or 0),
+                format_currency(cardFees),
+                format_currency(totalFees)
+            )
+
+        # ::STEP:: Generate Footer
+        print '''
+                </tbody>
+                <tfoot>
+                    <tr class="grand-total-row">
+                        <td colspan="2"><strong>GRAND TOTALS</strong></td>
+                        <td style="text-align: right;"><strong>{0}</strong></td>
+                        <td style="text-align: right;"><strong>{1}</strong></td>
+                        <td style="text-align: right;"><strong>{2}</strong></td>
+                        <td style="text-align: right;"><strong>{3}</strong></td>
+                        <td style="text-align: right;"><strong>{4}</strong></td>
+                        <td style="text-align: right;"><strong>{5}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div class="disclaimer">
+                <div class="disclaimer-title">Important Note:</div>
+                This report is based on transaction data within TouchPoint. Please note that 
+                credit card update feature fees and some reversals may not be reflected back 
+                to TouchPoint, which could result in slight discrepancies between this report 
+                and actual processing fees charged by Fortis.
+            </div>
+        </div>
+        <script>hideLoading();</script>
+        '''.format(
+            format_currency(total_amount), format_currency(total_cc),
+            format_currency(total_amex), format_currency(total_ach),
+            format_currency(total_card_fees), format_currency(total_all_fees)
+        )
+
+    except Exception as e:
+        # ::STEP:: Error Handling
+        print "<div class='error-container'>"
+        print "<h2>Report Generation Error</h2>"
+        print "<p><strong>An error occurred:</strong> " + str(e) + "</p>"
+        print "<details><summary>Technical Details</summary><pre>"
+        traceback.print_exc()
+        print "</pre></details>"
+        print "<p><a href='javascript:history.back()'>← Go Back</a></p>"
+        print "</div><script>hideLoading();</script>"
+
+# ::STEP:: Execute Main Logic - NO EXIT CALLS ANYWHERE
+main_report_logic()
+# ::END:: Main Report Processing
+
+#####################################################################
+#### WORKFLOW VISUALIZATION HELPER
+#####################################################################
+
+# ::START:: Workflow Documentation
+def show_workflow_outline():
+    """
+    Generates a visual outline of the report process flow
+    Helpful for understanding the system architecture
+    """
+    return '''
+FORTIS FEES REPORT - WORKFLOW OUTLINE
+=====================================
+
+1. INITIALIZATION PHASE
+   ├── Configuration Setup (Centralized fee parameters)
+   ├── Error Handling Setup (Comprehensive try/catch blocks)  
+   ├── Form Data Processing (TouchPoint-safe attribute access)
+   └── Library Imports (Python 2.7 compatible modules)
+
+2. UTILITY FUNCTIONS PHASE
+   ├── Currency Formatting (Display-ready monetary values)
+   ├── CSV Generation (Export functionality)
+   └── Loading Indicators (User experience enhancements)
+
+3. SQL CONSTRUCTION PHASE
+   ├── FilteredTransactions CTE (Date filtering by payment type)
+   ├── ExtractedData CTE (Fee calculations with business rules)
+   └── Final Query (Grouping and aggregation)
+
+4. TEMPLATE GENERATION PHASE
+   ├── HTML Structure (Responsive design with TouchPoint compatibility)
+   ├── CSS Styling (Professional appearance)
+   └── Form Components (Date inputs and export options)
+
+5. DATA PROCESSING PHASE
+   ├── Input Validation (Date range verification)
+   ├── Query Execution (Database interaction)
+   ├── Results Processing (Totals calculation)
+   └── Output Decision (HTML report vs CSV export)
+
+6. OUTPUT GENERATION PHASE
+   ├── CSV Export Path (File download with proper headers)
+   └── HTML Report Path (Formatted web display)
+
+TECHNOLOGY STACK:
+TouchPoint ChMS → Python 2.7 → SQL Server → HTML/CSS → CSV Export
+
+DATA FLOW:
+User Input → Date Validation → SQL Execution → Fee Calculations → 
+Format Selection → Output Generation → User Display/Download
+'''
+
+# Uncomment to see workflow outline:
+# print "<pre>" + show_workflow_outline() + "</pre>"
+# ::END:: Workflow Documentation
