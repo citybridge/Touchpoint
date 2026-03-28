@@ -35,7 +35,7 @@ These are the tools churches ask about most and install first:
 | 🏆 Ministry Structure | The clearest way to visualize your entire involvement hierarchy at a glance |
 | 🏆 Weekly Attendance | Redefines how groups track and own their attendance |
 | 🏆 Live Search | Game-changer for adding a quick note, task, or seeing someone's full journey instantly |
-| 🏆 Ministry Deposit Tool | Has become the standard for financial processing and reconciliation |
+| 🏆 Weekly Contribution Tool | Has become the standard for financial processing and reconciliation |
 | 🏆 Communication Dashboard | A must-have for ministry teams serious about tracking outreach |
 | 🏆 API Explorer | The fastest way for developers to explore and test TouchPoint queries |
 
