@@ -1,5 +1,5 @@
 ### 📊 [Enterprise Report Builder](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Enterprise%20Reporting)
-70+ built-in reports across 8 categories — Demographics, Financial, Attendance, Membership, Engagement, Communications, Emergency, and Admin — all in a single paste-and-go script with auto-updates via DisplayCache.
+70+ built-in reports across 8 categories — Demographics, Financial, Attendance, Membership, Engagement, Communications, Emergency, and Admin all in a single paste-and-go script with auto-updates via DisplayCache.
 
 - ⚙️ **Implementation Level:** Easy
 - 🧩 **Installation:** Single script. Paste into Special Content > Python, navigate to `/PyScriptForm/TPxi_ReportBuilder`. Configure settings via the gear icon.
@@ -16,7 +16,7 @@
 - **Contact Effort Tracking:** Configure outreach methods (Phone, Email, Visit, Text, Mail) and every people report automatically shows per-method contact counts from TaskNotes
 - **Fund Multi-Select Filters:** Filter financial reports by one or multiple funds
 - **Custom Report Builder:** Create and save your own SQL reports with a built-in editor and snippet library
-- **CSV Export & Print:** One-click export or popup print for any report
+- **CSV Export & Print:** One-click export or pop-up print for any report
 - **Per-Report Permissions:** Restrict individual reports beyond category-level roles
 - **Auto-Update:** Checks DisplayCache for new versions (Admin/Developer only) and updates in-place
 - **Role-Based Access:** Control who sees each category and each individual report
