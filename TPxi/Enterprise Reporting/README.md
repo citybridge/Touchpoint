@@ -20,7 +20,7 @@
 - **Per-Report Permissions:** Restrict individual reports beyond category-level roles
 - **Auto-Update:** Checks DisplayCache for new versions (Admin/Developer only) and updates in-place
 - **Role-Based Access:** Control who sees each category and each individual report
-- **Org Scope Filter:** Filter any report by a specific involvement's membership
+- **Inv. Scope Filter:** Filter any report by a specific involvement's membership
 
 <summary><strong>Report Categories</strong></summary>
 
