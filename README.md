@@ -41,6 +41,7 @@ These are the tools churches ask about most and install first:
 
 ### 🆕 Recently Added
 Fresh tools hot off the workbench:
+- ✨ **[Enterprise Reporting](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Enterprise%20Reporting)**: 70+ Enterprise Reports from a Single Location
 - ✨ **[Involvement Processor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Processor)**: Comprehensive involvement registrant processing
 - ✨ **[Menu Editor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Menu%20Editor)**: Visual editor to People, Involvement, Finance, Admin, and Blue Toolbar menus
 - ✨ **[Mission Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Mission%20Dashboard)**: New Comprehensive Mission Dashboard
@@ -53,6 +54,7 @@ Fresh tools hot off the workbench:
 ### 🏛️ Organizational Foundations
 Gain a comprehensive understanding of your ministry's structure and dynamics
 
+- **[Enterprise Reporting](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Enterprise%20Reporting)**: 70+ Enterprise Reports from a Single Location
 - **[Ministry Structure](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Ministry%20Structure)**: Visualize your ministry's organizational hierarchy
 - **[Involvement Activity Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Activity%20Dashboard)**: Track and analyze involvement engagement
 - **[Membership Analysis](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Membership%20Analysis)**: Deep insights into membership trends and demographics
