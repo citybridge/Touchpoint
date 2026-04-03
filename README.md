@@ -1,151 +1,263 @@
-# 🚀 TouchPoint Integrated Tools (TPxi)
+<div align="center">
 
-## 💡 Guiding Philosophy
-These tools were created with a simple mission: to help ministries leverage technology in service of their core purpose...loving people and growing God's Kingdom.
+<img src="https://fbchville.com/wp-content/uploads/2022/08/BenSwaby.jpg" width="120" style="border-radius: 50%;" />
 
-## ☕ Support This Work
+# TPxi — TouchPoint Integrated Tools
 
-All 40+ of these tools are free to the community because I believe Kingdom tools should be accessible 
-to every church, regardless of budget. If they've saved your team time, I'd love your support in return.
+**Built by Ben Swaby** · Director of Technology Solutions, First Baptist Church Hendersonville
 
-I'm the creator of **[DisplayCache](https://displaycache.com)**, a church digital signage platform 
-built with the same heart behind these tools: simple, powerful, and ministry-focused. DisplayCache 
-integrates directly with TouchPoint, pulling your real people and ministry data into your screens... 
-no double entry, no stale slides. A subscription helps me keep building and maintaining everything 
-you see here.
+*100,000+ lines of code. 50+ tools. All free.*
 
-👉 **[Check out DisplayCache](https://displaycache.com)** and if it's a fit for your church, your 
-subscription directly fuels my work and continued effort to build these tools that are helping churches grow the Kingdom.
+[![GitHub Stars](https://img.shields.io/github/stars/bswaby/Touchpoint?style=flat-square&color=f0a500)](https://github.com/bswaby/Touchpoint/stargazers)
+[![GitHub Forks](https://img.shields.io/github/forks/bswaby/Touchpoint?style=flat-square&color=3b82f6)](https://github.com/bswaby/Touchpoint/network)
+[![Tools](https://img.shields.io/badge/Tools-40%2B-22c55e?style=flat-square)](https://github.com/bswaby/Touchpoint)
+[![Churches](https://img.shields.io/badge/Churches%20Using-50%2B-a855f7?style=flat-square)](https://github.com/bswaby/Touchpoint)
 
-## 🎨 Documentation
-- **[SQL Documentation](https://bswaby.github.io/Touchpoint/DOC_SQLDocumentation.html)**: Touchpoint SQL Reference
+</div>
 
-## 🎨 Next Generation Mocks
-Concept designs and ideas for what the next generation of Touchpoint could become.  
-These mocks explore how both **members** and **leaders** could have simpler, more guided, and more actionable experiences within the system.
-- **[NextGen TP Mocks](https://github.com/bswaby/Touchpoint/tree/main/NextGen%20TP%20Mocks)**: Visualize and Dream How the NextGen TP Could Function
+---
 
+## 👋 About the Builder
 
-## ⭐ Community Favorites
-These are the tools churches ask about most and install first:
+<img align="right" src="https://fbchville.com/wp-content/uploads/2022/08/BenSwaby.jpg" width="160" style="border-radius: 12px; margin-left: 20px; margin-bottom: 10px;" />
 
-### ⭐ Church Favorites
-| Tool | Why Churches Love It |
-|------|----------------------|
-| 🏆 Ministry Structure | The clearest way to visualize your entire involvement hierarchy at a glance |
-| 🏆 Weekly Attendance | Redefines how groups track and own their attendance |
-| 🏆 Live Search | Game-changer for adding a quick note, task, or seeing someone's full journey instantly |
-| 🏆 Weekly Contribution Tool | Has become the standard for financial processing and reconciliation |
-| 🏆 Communication Dashboard | A must-have for ministry teams serious about tracking outreach |
-| 🏆 API Explorer | The fastest way for developers to explore and test TouchPoint queries |
+I'm Ben, a church technology director who got tired of waiting for software to do what ministry actually needs. So I started building it myself.
 
-### 🆕 Recently Added
-Fresh tools hot off the workbench:
-- ✨ **[Enterprise Reporting](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Enterprise%20Reporting)**: 70+ Enterprise Reports from a Single Location
-- ✨ **[Involvement Processor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Processor)**: Comprehensive involvement registrant processing
-- ✨ **[Menu Editor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Menu%20Editor)**: Visual editor to People, Involvement, Finance, Admin, and Blue Toolbar menus
-- ✨ **[Mission Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Mission%20Dashboard)**: New Comprehensive Mission Dashboard
-- ✨ **[Program Pulse](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Program%20Pulse)**: Surface what is happening across programs
-- ✨ **[QuickLinks](https://github.com/bswaby/Touchpoint/blob/main/TPxi/Quicklinks)**: Permissionable QuickLinks Menu with Count Overlay
-- ✨ **[Report Writer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Report%20Writer)**: Inv. and User Report Writer
+Over the past few years, I've written **100,000+ lines of code** inside TouchPoint, creating tools that have quietly transformed how dozens of churches track attendance, process giving, re-engage lapsed members, manage volunteers, and understand their own data. I've written a **59-page SQL reference guide** for TouchPoint's database, led regional developer events, and stay actively involved in the TouchPoint developer community.
 
-## 🌟 Tool Categories
+Every tool in this repo was born from a real problem at a real church. None of it is theoretical. All of it is free.
 
-### 🏛️ Organizational Foundations
-Gain a comprehensive understanding of your ministry's structure and dynamics
+My philosophy is simple: **Kingdom tools should be accessible to every church, regardless of budget.**
 
-- **[Enterprise Reporting](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Enterprise%20Reporting)**: 70+ Enterprise Reports from a Single Location
-- **[Ministry Structure](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Ministry%20Structure)**: Visualize your ministry's organizational hierarchy
-- **[Involvement Activity Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Activity%20Dashboard)**: Track and analyze involvement engagement
-- **[Membership Analysis](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Membership%20Analysis)**: Deep insights into membership trends and demographics
+> *"Start where it hurts most. Code what matters most. Keep it simple, keep it working."*
 
-### 👥 People & Engagement
-Understand, track, and enhance member participation and growth
+<br clear="right"/>
 
-- **[Weekly Attendance (WAAG 2.0)](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Weekly%20Attendance)**: Advanced attendance tracking and reporting
-- **[Geographic Distribution Map](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Geographic%20Distribution%20Map)**: Visualize member locations and demographics
-- **[Anniversaries Widget](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Anniversaries)**: Track and celebrate member milestones
-- **[Communication Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Communication%20Dashboard)**: Analyze communication patterns and effectiveness
-- **[New Member Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/New%20Member%20Report)**: Comprehensive tracking of new member onboarding
-- **[Emergency List](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Emergency%20List)**: Critical contact and medical information management
-- **[Volunteer Scheduler Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Scheduler%20Report)**: Volunteer Scheduler Report
-- **[Volunteer Widget](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Volunteer%20Widget)**: Shows logged in user upcoming assignments
+---
 
-### 🔍 Discovery & Insights
-Uncover hidden patterns and proactively engage with your community
+## ☕ Support This Work — DisplayCache
 
-- **[Live Search](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Live%20Search)**: Advanced, real-time member search with quick actions
-- **[Auxiliary to Group Analytics](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Auxiliary%20to%20Group%20Analytics)**: Analyze program effectiveness in driving group participation
-- **[Lapsed Attenders](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Lapsed%20Attenders)**: Proactive member engagement tracking
-- **[Program Pulse](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Program%20Pulse)**: Surface what is happening across programs
-- **[User Activity](https://github.com/bswaby/Touchpoint/tree/main/TPxi/User%20Activity)**: System usage and user behavior analysis
+If these tools have saved your team hours (and they will), I'd love your support in return.
 
-### 💡 Engagement Optimization
-Streamline communication and access for ministry leaders
+I'm the creator of **[DisplayCache](https://displaycache.com)**, a church digital signage platform built with the same heart as these tools. DisplayCache connects directly to TouchPoint, pulling **real people and ministry data** onto your screens. No double entry. No stale slides. Just live, ministry-driven content.
 
-- **[TaskNote Activity Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/TaskNote%20Activity%20Dashboard)**: Monitor task and note activities
-- **[QuickLinks](https://github.com/bswaby/Touchpoint/blob/main/TPxi/Quicklinks)**: Permissionable QuickLinks Menu with Count Overlay
-- **[Involvement Owner Audit](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Notification%20Audit%20Tool)**: Track involvement leadership and ownership
+<div align="left">
 
-### 💰 Financial Management
-Simplify and streamline financial tracking and reporting
+| What You Get | Why It Matters |
+|---|---|
+| 🔗 Live TouchPoint data on your screens | No more manually updating slides |
+| 📺 Works on Apple TV, Fire Stick, Raspberry Pi | Use hardware you already own |
+| ✝️ Built specifically for churches | Not a generic signage tool |
+| 💰 $10/device/month | Fuels all 40+ free tools here |
 
-- **[Involvement with Fees](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvements%20with%20Fees)**: Fee-based involvement tracking
-- **[Payment Manager](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Payment%20Manager)**: Outstanding payment tracking and management
-- **[Deposit Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Deposit%20Report)**: Comprehensive deposit reconciliation
-- **[Envelope Number Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Envelope%20Number%20Report)**: Basic SQL report for giving envelopes
-- **[Find Funds in Batch](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Find%20Funds%20in%20Batch)**: Find batches that contain specific funds
-- **[Fortis Fees](https://github.com/bswaby/Touchpoint/tree/main/Finance/FortisFees)**: Automated fee breakdown
-- **[Giving Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Giving%20Dashboard)**: Bring clarity, flexibility, and insight to financial stewardship.
-- **[Statement Audit Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Statement%20Audit)**: Get counts and work through statement issues for electronic and printed statements
-- **[QCD-Grant Letters](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Finance%20Grant-QCD%20Letter)**: Automated grant and QCD letter generation
-- **[Weekly Contribution Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Contribution%20Report)**: Detailed financial reporting
+**[→ Check Out DisplayCache](https://displaycache.com)** · Your subscription directly funds this community work.
 
-### 🛠️ Administrative & System Tools
-Maintain system health, security, and efficiency
+</div>
 
-- **[API Explorer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/API%20Explorer)**:  API Explorer
-- **[Registration Export](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Registration%20Export)**: Easy registration data export
-- **[Account Security Monitor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Account%20Security%20Monitor)**: Advanced security analytics
-- **[Attachment Link Downloader](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Attachment%20Link%20Generator)**: Bulk document download
-- **[Email Technical Diagnostics Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Email%20Technical%20Diagnostics)**: Comprehensive email troubleshooting
-- **[Involvement Processor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Processor)**: Comprehensive involvement registrant processing 
-- **[Involvement Sync](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Sync)**: Synchronize involvement settings
-- **[Link Generator](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Link%20Generator)**: Pre-authenticated link creation
-- **[Menu Editor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Menu%20Editor)**: Visual editor to People, Involvement, Finance, Admin, and Blue Toolbar menus
-- **[Registration Data Manager](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Registration%20Data%20Manager)**: Registration Data Manager
-- **[Report Writer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Report%20Writer)**: Inv. and User Report Writer
-- **[SQL Query Explorer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/SQL%20Query%20Explorer)**: SQL Query Explorer
-- **[TechStatus](https://github.com/bswaby/Touchpoint/blob/main/Python%20Scripts/TechStatus/TechStatus)**: System status and performance monitoring
+---
 
-### 🌍 Specialized Solutions
-Targeted tools for specific ministry needs
+## ⭐ Start Here — Community Favorites
 
-- **[Mission Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Mission%20Dashboard)**: Comprehensive Mission Dashboard
-- **[FastLaneCheckIn](https://github.com/bswaby/Touchpoint/tree/main/TPxi/FastLaneCheckIn)**: Streamlined large-event check-in system
+These are the tools churches install first and use daily:
 
-## 🔍 Getting Started
+| Tool | What It Does in Practice |
+|------|--------------------------|
+| 🏆 [Ministry Structure](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Ministry%20Structure) | See your entire involvement hierarchy at a glance — programs, groups, sub-groups |
+| 🏆 [Weekly Attendance (WAAG 2.0)](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Weekly%20Attendance) | Groups track and own their own attendance — leaders actually use it |
+| 🏆 [Live Search](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Live%20Search) | Type a name, see full history, log a note or task in under 10 seconds |
+| 🏆 [Weekly Contribution Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Contribution%20Report) | The financial processing and reconciliation workflow churches standardize on |
+| 🏆 [Communication Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Communication%20Dashboard) | Know exactly who's being reached, how, and when — across every ministry team |
+| 🏆 [API Explorer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/API%20Explorer) | Explore and test TouchPoint API queries without writing a full script |
 
-### ⚙️ Prerequisites
-- Active TouchPoint account with administrative access
-- Basic understanding of how to copy, paste, and set variables for customization
-- Advanced understanding of HTML/CSS/Javascript/SQL to customize the interface
+---
 
-### 📥 Installation
-Most code snippets have configurable variables at the top. Simply copy and paste the script under Admin ~ Advanced ~ Special Content, then adjust the variables to match your ministry's specific needs.
+## ✨ Recently Added
 
-## 👥 Contributing
-Contributions are welcome! Help make these tools even better:
-1. Fork the repository
-2. Create a new branch for your feature
-3. Submit a pull request with a clear description of your changes
+| Tool | What's New |
+|------|-----------|
+| [Enterprise Reporting](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Enterprise%20Reporting) | 70+ reports accessible from a single dashboard |
+| [Involvement Processor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Processor) | Full registrant processing workflow in one place |
+| [Menu Editor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Menu%20Editor) | Visually edit People, Involvement, Finance, Admin & toolbar menus |
+| [Mission Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Mission%20Dashboard) | Comprehensive view of all mission activity |
+| [Program Pulse](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Program%20Pulse) | Surface what's actually happening across programs |
+| [QuickLinks](https://github.com/bswaby/Touchpoint/blob/main/TPxi/Quicklinks) | Permissioned quick-access menu with live count overlays |
+| [Report Writer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Report%20Writer) | Build and save custom involvement & user reports |
 
-## 📞 Technical Support
-Need help implementing these tools?
-- Open an issue in this repository
-- Reach out for direct support
+---
 
-## 🙏 Acknowledgments
-- Thanks to the TouchPoint team for creating an extensible platform
-- Special gratitude to churches that have tested and provided feedback
+## 📦 All Tools by Category
 
+<details>
+<summary><strong>🏛️ Organizational Foundations</strong> — Understand your ministry structure and dynamics</summary>
+
+| Tool | Description |
+|------|-------------|
+| [Enterprise Reporting](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Enterprise%20Reporting) | 70+ reports from a single location |
+| [Ministry Structure](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Ministry%20Structure) | Visualize your full involvement hierarchy |
+| [Involvement Activity Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Activity%20Dashboard) | Track and analyze engagement trends |
+| [Membership Analysis](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Membership%20Analysis) | Deep dive into membership demographics and trends |
+
+</details>
+
+<details>
+<summary><strong>👥 People & Engagement</strong> — Track participation and celebrate milestones</summary>
+
+| Tool | Description |
+|------|-------------|
+| [Weekly Attendance (WAAG 2.0)](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Weekly%20Attendance) | Advanced group attendance tracking |
+| [Geographic Distribution Map](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Geographic%20Distribution%20Map) | Visualize where your members live |
+| [Anniversaries Widget](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Anniversaries) | Track and celebrate member milestones |
+| [Communication Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Communication%20Dashboard) | Analyze outreach patterns and effectiveness |
+| [New Member Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/New%20Member%20Report) | Track new member onboarding comprehensively |
+| [Emergency List](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Emergency%20List) | Critical contact and medical info management |
+| [Volunteer Scheduler Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Scheduler%20Report) | Full volunteer scheduling report |
+| [Volunteer Widget](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Volunteer%20Widget) | Shows logged-in user's upcoming assignments |
+
+</details>
+
+<details>
+<summary><strong>🔍 Discovery & Insights</strong> — Uncover patterns and proactively engage</summary>
+
+| Tool | Description |
+|------|-------------|
+| [Live Search](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Live%20Search) | Real-time member search with instant actions |
+| [Auxiliary to Group Analytics](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Auxiliary%20to%20Group%20Analytics) | How well are programs driving group participation? |
+| [Lapsed Attenders](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Lapsed%20Attenders) | Identify and re-engage members going quiet |
+| [Program Pulse](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Program%20Pulse) | What's actually happening across programs |
+| [User Activity](https://github.com/bswaby/Touchpoint/tree/main/TPxi/User%20Activity) | System usage and staff behavior analysis |
+
+</details>
+
+<details>
+<summary><strong>💡 Engagement Optimization</strong> — Streamline communication and leader access</summary>
+
+| Tool | Description |
+|------|-------------|
+| [TaskNote Activity Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/TaskNote%20Activity%20Dashboard) | Monitor task and note activities across the team |
+| [QuickLinks](https://github.com/bswaby/Touchpoint/blob/main/TPxi/Quicklinks) | Permissioned quick-access menu with count overlays |
+| [Involvement Owner Audit](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Notification%20Audit%20Tool) | Track involvement leadership and ownership gaps |
+
+</details>
+
+<details>
+<summary><strong>💰 Financial Management</strong> — Simplify tracking and reporting</summary>
+
+| Tool | Description |
+|------|-------------|
+| [Involvement with Fees](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvements%20with%20Fees) | Fee-based involvement tracking |
+| [Payment Manager](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Payment%20Manager) | Outstanding payment tracking and follow-up |
+| [Deposit Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Deposit%20Report) | Comprehensive deposit reconciliation |
+| [Envelope Number Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Envelope%20Number%20Report) | Giving envelope SQL report |
+| [Find Funds in Batch](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Find%20Funds%20in%20Batch) | Find which batches contain specific funds |
+| [Fortis Fees](https://github.com/bswaby/Touchpoint/tree/main/Finance/FortisFees) | Automated fee breakdown |
+| [Giving Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Giving%20Dashboard) | Clarity and insight into financial stewardship |
+| [Statement Audit Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Statement%20Audit) | Work through electronic and printed statement issues |
+| [QCD-Grant Letters](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Finance%20Grant-QCD%20Letter) | Automated grant and QCD letter generation |
+| [Weekly Contribution Report](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Contribution%20Report) | The standard for financial reporting and reconciliation |
+
+</details>
+
+<details>
+<summary><strong>🛠️ Administrative & System Tools</strong> — Keep the system healthy and efficient</summary>
+
+| Tool | Description |
+|------|-------------|
+| [API Explorer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/API%20Explorer) | Explore and test TouchPoint API queries live |
+| [Registration Export](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Registration%20Export) | Easy registration data export |
+| [Account Security Monitor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Account%20Security%20Monitor) | Advanced security analytics |
+| [Attachment Link Downloader](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Attachment%20Link%20Generator) | Bulk document download |
+| [Email Technical Diagnostics](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Email%20Technical%20Diagnostics) | Deep email troubleshooting dashboard |
+| [Involvement Processor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Processor) | Comprehensive registrant processing |
+| [Involvement Sync](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Sync) | Synchronize involvement settings across groups |
+| [Link Generator](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Link%20Generator) | Pre-authenticated link creation |
+| [Menu Editor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Menu%20Editor) | Visual menu editor for all major nav areas |
+| [Registration Data Manager](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Registration%20Data%20Manager) | Manage registration data at scale |
+| [Report Writer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Report%20Writer) | Build custom involvement & user reports |
+| [SQL Query Explorer](https://github.com/bswaby/Touchpoint/tree/main/TPxi/SQL%20Query%20Explorer) | Run and explore SQL queries directly |
+| [TechStatus](https://github.com/bswaby/Touchpoint/blob/main/Python%20Scripts/TechStatus/TechStatus) | System status and performance monitoring |
+
+</details>
+
+<details>
+<summary><strong>🌍 Specialized Solutions</strong> — Purpose-built for specific ministry moments</summary>
+
+| Tool | Description |
+|------|-------------|
+| [Mission Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Mission%20Dashboard) | Comprehensive mission trip and activity tracking |
+| [FastLaneCheckIn](https://github.com/bswaby/Touchpoint/tree/main/TPxi/FastLaneCheckIn) | Streamlined large-event check-in system |
+
+</details>
+
+---
+
+## 🚀 Installing a Script — 3 Steps
+
+> 💡 Each tool folder has its own README with script-specific instructions. This is the general process.
+
+<details>
+<summary><strong>Step 1 — Copy the Script</strong></summary>
+
+Open the tool folder and copy the contents of the `.py` or `.html` file. Most tools have a single primary file. If you're unsure which file to use, check the tool's README.
+
+</details>
+
+<details>
+<summary><strong>Step 2 — Add it to TouchPoint Special Content</strong></summary>
+
+1. Log into your TouchPoint instance as an admin
+2. Navigate to **Admin → Advanced → Special Content**
+3. Click **Add New**
+4. Give it a name (e.g., `TPxi-LiveSearch`)
+5. Paste the script into the content area
+6. Save
+
+</details>
+
+<details>
+<summary><strong>Step 3 — Configure the Variables</strong></summary>
+
+Every script has a clearly marked configuration block near the top — usually looks like:
+
+```python
+# ── CONFIGURATION ──────────────────────────────────────────────
+ORG_ID = 12345          # Your organization ID
+SHOW_INACTIVE = False   # Show inactive members?
+MAX_RESULTS = 50        # Results per page
+# ───────────────────────────────────────────────────────────────
+```
+
+Adjust those values to match your church's setup. That's it — you don't need to touch anything else.
+
+</details>
+
+---
+
+## 📚 Documentation & Resources
+
+| Resource | Link |
+|----------|------|
+| 📖 SQL Reference Guide | **[TouchPoint SQL Documentation](https://bswaby.github.io/Touchpoint/DOC_SQLDocumentation.html)** |
+| 🎨 NextGen TP Concept Mocks | **[Visualize What TP Could Become](https://github.com/bswaby/Touchpoint/tree/main/NextGen%20TP%20Mocks)** |
+| 💬 Community & Support | Open an issue in this repo or find me in the TouchPoint Discord |
+
+---
+
+## 🤝 Contributing
+
+The most valuable contributions right now are:
+
+- **Bug reports** — If something breaks in your environment, open an issue with your TP version
+- **SQL improvements** — Got a better query? Submit a PR with a clear explanation
+- **Real-world feedback** — Tell me what's missing or what's confusing — that shapes the roadmap more than anything
+
+---
+
+<div align="center">
+
+Built with ☕ and a deep belief that **technology should serve ministry, not complicate it.**
+
+*— Ben Swaby, [fbchtn.org](https://fbchtn.org)*
+
+**[DisplayCache](https://displaycache.com)** · **[GitHub](https://github.com/bswaby/Touchpoint)** · **[SQL Docs](https://bswaby.github.io/Touchpoint/DOC_SQLDocumentation.html)**
+
+</div>
