@@ -6,7 +6,7 @@
 
 **Built by Ben Swaby** · Director of Technology Solutions, First Baptist Church Hendersonville
 
-*100,000+ lines of code. 50+ tools. All free.*
+*100,000+ lines of code. 40+ tools. All free.*
 
 [![GitHub Stars](https://img.shields.io/github/stars/bswaby/Touchpoint?style=flat-square&color=f0a500)](https://github.com/bswaby/Touchpoint/stargazers)
 [![GitHub Forks](https://img.shields.io/github/forks/bswaby/Touchpoint?style=flat-square&color=3b82f6)](https://github.com/bswaby/Touchpoint/network)
