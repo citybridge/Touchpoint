@@ -75,7 +75,7 @@ These are the tools churches install first and use daily:
 
 | Tool | What's New |
 |------|-----------|
-| [Enterprise Reporting](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Enterprise%20Reporting) | 70+ reports accessible from a single dashboard |
+| [Enterprise Reporting](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Enterprise%20Reporting) | 100+ reports accessible from a single dashboard |
 | [Involvement Processor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Involvement%20Processor) | Full registrant processing workflow in one place |
 | [Menu Editor](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Menu%20Editor) | Visually edit People, Involvement, Finance, Admin & toolbar menus |
 | [Mission Dashboard](https://github.com/bswaby/Touchpoint/tree/main/TPxi/Mission%20Dashboard) | Comprehensive view of all mission activity |
