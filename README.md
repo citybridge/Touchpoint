@@ -248,7 +248,7 @@ The most valuable contributions right now are:
 
 - **Bug reports** — If something breaks in your environment, open an issue with your TP version
 - **SQL improvements** — Got a better query? Submit a PR with a clear explanation
-- **Real-world feedback** — Tell me what's missing or what's confusing — that shapes the roadmap more than anything
+- **Real-world feedback** — Tell me what's missing or what's confusing as that shapes the roadmap more than anything
 
 ---
 
