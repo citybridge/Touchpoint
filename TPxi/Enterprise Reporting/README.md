@@ -71,9 +71,9 @@
 <summary><strong>Installation</strong></summary>
 
 1. **Admin > Advanced > Special Content > Python**
-2. Click **Add New**, name it `TPxi_ReportBuilder`
+2. Click **Add New**, name it `EnterpriseReporting`
 3. Paste the script and Save
-4. Navigate to `/PyScriptForm/TPxi_ReportBuilder`
+4. Navigate to `/PyScript/EnterpriseReporting`
 5. (Optional) Click the gear icon to configure category roles, contact methods, and fiscal year
 
 <summary><strong>Settings Overview</strong></summary>
