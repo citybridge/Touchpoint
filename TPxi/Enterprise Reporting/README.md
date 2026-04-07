@@ -2,7 +2,7 @@
 133 built-in reports across 10 categories — Demographics, Financial, Attendance, Membership, Engagement, Communications, Transactions, Tasks, Emergency, and Admin all in a single paste-and-go script with auto-updates via DisplayCache.
 
 - ⚙️ **Implementation Level:** Easy
-- 🧩 **Installation:** Single script. Paste into Special Content > Python, navigate to `/PyScriptForm/TPxi_ReportBuilder`. Configure settings via the gear icon.
+- 🧩 **Installation:** Single script. Paste into Special Content > Python, navigate to `/PyScript/EnterpriseReporting`. Configure settings via the gear icon.
 
 <summary><strong>Features</strong></summary>
 
@@ -91,7 +91,7 @@
 
 Add to **Special Content > Text Content > CustomReports**:
 ```xml
-<Report name="TPxi_ReportBuilder" type="PyScript" role="Access" />
+<Report name="EnterpriseReporting" type="PyScript" role="Access" />
 ```
 
 ---
