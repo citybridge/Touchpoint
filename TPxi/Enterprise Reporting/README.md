@@ -74,7 +74,7 @@
 2. Click **Add New**, name it `EnterpriseReporting`
 3. Paste the script and Save
 4. Navigate to `/PyScript/EnterpriseReporting`
-5. (Optional) Click the gear icon to configure category roles, contact methods, and fiscal year
+5. (Optional) Click settings to configure category roles, contact methods, and fiscal year
 
 <summary><strong>Settings Overview</strong></summary>
 
