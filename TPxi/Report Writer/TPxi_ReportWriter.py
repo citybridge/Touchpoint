@@ -41,6 +41,9 @@ v1.4 - April 2026
   - Added: Marital Status as a person field option (joined from lookup.MaritalStatus, not hardcoded)
   - Fixed: Duplicate registration questions with same label now handled correctly (keyed by RegQuestionId)
   - Fixed: Backward compatibility preserved for saved templates with duplicate question labels
+  - Fixed: Registration answers no longer display with surrounding quotes
+  - Fixed: JSON array answers (checkboxes) now display as comma-separated text instead of raw JSON
+  - Added: "Preserve line breaks in answers" toggle - converts literal \n in answers to line breaks when on, strips them when off
 v1.3 - March 2026
   - Added: Cover Page option with summary statistics (total registrants, gender breakdown, org info)
   - Added: Missing Information page with configurable field picker (profile, medical, family, reg questions)
@@ -171,6 +174,38 @@ def sanitize_for_json(obj):
 # ============================================================================
 # HELPER FUNCTIONS
 # ============================================================================
+
+def clean_answer_value(val, preserve_newlines=False):
+    """Clean a registration answer value for display.
+    - Strips surrounding quotes
+    - Parses JSON arrays into comma-separated text
+    - Converts literal \\n to <br> if preserve_newlines is True, otherwise strips them"""
+    if not val:
+        return ''
+    s = safe_str(val).strip()
+
+    # Try to parse as JSON array (checkbox answers like ["A","B","C"])
+    if s.startswith('[') and s.endswith(']'):
+        try:
+            items = json.loads(s)
+            if isinstance(items, list):
+                cleaned = [safe_str(item).strip().strip('"') for item in items]
+                return html_escape(', '.join(cleaned))
+        except:
+            pass
+
+    # Strip surrounding quotes
+    if len(s) >= 2 and s[0] == '"' and s[-1] == '"':
+        s = s[1:-1]
+
+    # Handle literal \n in answer text
+    s = html_escape(s)
+    if preserve_newlines:
+        s = s.replace('\\n', '<br>')
+    else:
+        s = s.replace('\\n', ' ')
+
+    return s
 
 def html_escape(text):
     """Escape HTML special characters"""
@@ -901,7 +936,7 @@ def get_people_data_direct(people_ids):
 # REPORT GENERATION ENGINE
 # ============================================================================
 
-def get_field_value(person, field):
+def get_field_value(person, field, preserve_newlines=False):
     """Get the value of a field from person data"""
     ft = field.get('fieldType', '')
     src = field.get('sourceField', '')
@@ -937,7 +972,8 @@ def get_field_value(person, field):
         return html_escape(val)
 
     elif ft == 'regquestion':
-        return html_escape(person.get('answers', {}).get(src, ''))
+        raw = person.get('answers', {}).get(src, '')
+        return clean_answer_value(raw, preserve_newlines)
 
     elif ft == 'extravalue':
         return html_escape(person.get('_ev_' + src, ''))
@@ -1020,6 +1056,7 @@ def render_report_html(people, template, org_name, questions, single_person_id=N
     one_per_page = ps.get('onePersonPerPage', True)
     show_org_header = ps.get('showOrgHeader', True)
     compact_rows = opts.get('compactRows', False)
+    preserve_newlines = opts.get('preserveNewlines', False)
 
     sorted_sections = sorted(sections, key=lambda s: s.get('order', 0))
 
@@ -1087,7 +1124,7 @@ def render_report_html(people, template, org_name, questions, single_person_id=N
                 for f in fields:
                     if not f.get('visible', True):
                         continue
-                    val = get_field_value(person, f)
+                    val = get_field_value(person, f, preserve_newlines)
                     if val and val.strip():
                         has_values = True
                         break
@@ -1122,7 +1159,7 @@ def render_report_html(people, template, org_name, questions, single_person_id=N
                         parts.append('</div>')
                     continue
 
-                val = get_field_value(person, f)
+                val = get_field_value(person, f, preserve_newlines)
                 display_fmt = f.get('displayFormat', 'single-line')
                 col_span = f.get('colSpan', 1)
 
@@ -2345,6 +2382,10 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid #cbd5e0; bord
                         <label class="rr-toggle"><input type="checkbox" id="rrOptShowPhoto" onchange="updateGlobalOption('showPersonPhoto', this.checked)"><span class="rr-toggle-slider"></span></label>
                     </div>
                     <div class="rr-option-row">
+                        <span class="rr-option-label">Preserve line breaks in answers</span>
+                        <label class="rr-toggle"><input type="checkbox" id="rrOptPreserveNewlines" onchange="updateGlobalOption('preserveNewlines', this.checked)"><span class="rr-toggle-slider"></span></label>
+                    </div>
+                    <div class="rr-option-row">
                         <span class="rr-option-label">One person per page</span>
                         <label class="rr-toggle"><input type="checkbox" id="rrOptOnePerPage" checked onchange="updatePrintSetting('onePersonPerPage', this.checked)"><span class="rr-toggle-slider"></span></label>
                     </div>
@@ -2632,6 +2673,7 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid #cbd5e0; bord
             setChecked('rrOptHideEmpty', go.hideEmptyFields !== false);
             setChecked('rrOptHideUnanswered', go.hideUnansweredQuestions !== false);
             setChecked('rrOptShowPhoto', go.showPersonPhoto === true);
+            setChecked('rrOptPreserveNewlines', go.preserveNewlines === true);
             setChecked('rrOptOnePerPage', ps.onePersonPerPage !== false);
             setChecked('rrOptShowOrgHeader', ps.showOrgHeader !== false);
             setChecked('rrOptCompactRows', go.compactRows === true);
