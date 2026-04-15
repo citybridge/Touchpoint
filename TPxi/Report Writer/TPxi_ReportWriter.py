@@ -30,10 +30,17 @@ Features:
 
 Written By: Ben Swaby
 Email: bswaby@fbchtn.org
-Version: 1.3
-Date: March 2026
+Version: 1.4
+Date: April 2026
 
 Change Log:
+v1.4 - April 2026
+  - Added: CSV export button (Export CSV) alongside Print, using same template layout for columns
+  - Added: Page numbers option using @page CSS for true printed page numbering
+  - Added: "Allow sections to split across pages" toggle to eliminate blank space from page-break-inside:avoid
+  - Added: Marital Status as a person field option (joined from lookup.MaritalStatus, not hardcoded)
+  - Fixed: Duplicate registration questions with same label now handled correctly (keyed by RegQuestionId)
+  - Fixed: Backward compatibility preserved for saved templates with duplicate question labels
 v1.3 - March 2026
   - Added: Cover Page option with summary statistics (total registrants, gender breakdown, org info)
   - Added: Missing Information page with configurable field picker (profile, medical, family, reg questions)
@@ -394,7 +401,7 @@ def get_registrant_data(org_id, filter_people_ids=None):
             p.PeopleId, p.Name2, p.FirstName, p.LastName, p.NickName,
             p.BDate, p.Age, p.GenderId, p.EmailAddress, p.CellPhone, p.HomePhone,
             p.PrimaryAddress, p.PrimaryCity, p.PrimaryState, p.PrimaryZip,
-            p.FamilyId, ISNULL(p.CustodyIssue, 0) as CustodyIssue,
+            p.FamilyId, ms.Description as MaritalStatus, ISNULL(p.CustodyIssue, 0) as CustodyIssue,
             rr.MedicalDescription, rr.MedAllergy, rr.emcontact, rr.emphone,
             rr.doctor, rr.docphone, rr.insurance, rr.policy,
             ISNULL(rr.Tylenol, 0) as Tylenol, ISNULL(rr.Advil, 0) as Advil,
@@ -402,6 +409,7 @@ def get_registrant_data(org_id, filter_people_ids=None):
             pic.SmallUrl as PhotoUrl
         FROM OrganizationMembers om
         JOIN People p ON om.PeopleId = p.PeopleId
+        LEFT JOIN lookup.MaritalStatus ms ON p.MaritalStatusId = ms.Id
         LEFT JOIN RecReg rr ON rr.PeopleId = p.PeopleId
         LEFT JOIN Picture pic ON pic.PictureId = p.PictureId
         WHERE om.OrganizationId = {0}
@@ -424,6 +432,7 @@ def get_registrant_data(org_id, filter_people_ids=None):
                 'BDate': fmt_date(r.BDate),
                 'Age': str(r.Age) if r.Age else '',
                 'Gender': 'Male' if r.GenderId == 1 else 'Female' if r.GenderId == 2 else '',
+                'MaritalStatus': safe_str(r.MaritalStatus) if r.MaritalStatus else '',
                 'EmailAddress': safe_str(r.EmailAddress),
                 'CellPhone': fmt_phone(r.CellPhone),
                 'HomePhone': fmt_phone(r.HomePhone),
@@ -483,11 +492,14 @@ def get_registrant_data(org_id, filter_people_ids=None):
 
     # Query 2: Registration answers (new system)
     questions = []
-    question_set = set()
+    question_id_set = set()   # track by RegQuestionId (unique per question)
+    question_id_to_key = {}   # RegQuestionId -> answer key
+    label_count = {}          # track label occurrences for duplicate detection
 
     answers_sql = """
         SELECT
             rp.PeopleId,
+            rq.RegQuestionId,
             rq.Label as Question,
             rq.[Order] as QuestionOrder,
             ra.AnswerValue as Answer
@@ -504,11 +516,27 @@ def get_registrant_data(org_id, filter_people_ids=None):
     try:
         for r in q.QuerySql(answers_sql):
             q_text = safe_str(r.Question)
-            if q_text and q_text not in question_set:
-                questions.append(q_text)
-                question_set.add(q_text)
-            if r.PeopleId in people_map and q_text:
-                people_map[r.PeopleId]['answers'][q_text] = safe_str(r.Answer)
+            q_id = r.RegQuestionId
+
+            # First time seeing this RegQuestionId — register it
+            if q_id not in question_id_set:
+                question_id_set.add(q_id)
+                # Check if this label was already used by a different question
+                count = label_count.get(q_text, 0)
+                label_count[q_text] = count + 1
+                if count == 0:
+                    # First question with this label — use plain label as key (backward compatible)
+                    q_key = q_text
+                else:
+                    # Duplicate label — append occurrence number to distinguish
+                    q_key = '{0} ({1})'.format(q_text, count + 1)
+                question_id_to_key[q_id] = q_key
+                questions.append({'key': q_key, 'label': q_text})
+
+            # Look up the key for this question and store the answer
+            q_key = question_id_to_key.get(q_id, q_text)
+            if r.PeopleId in people_map:
+                people_map[r.PeopleId]['answers'][q_key] = safe_str(r.Answer)
     except:
         pass
 
@@ -543,7 +571,7 @@ def get_registrant_data(org_id, filter_people_ids=None):
                     if qtext and qtext not in p['answers']:
                         p['answers'][qtext] = ans
                         if qtext not in question_set:
-                            questions.append(qtext)
+                            questions.append({'key': qtext, 'label': qtext})
                             question_set.add(qtext)
                 # Text
                 for match in re.finditer(r'<Text[^>]*\squestion="([^"]+)"[^>]*>([^<]*)</Text>', person_xml):
@@ -551,7 +579,7 @@ def get_registrant_data(org_id, filter_people_ids=None):
                     if qtext and qtext not in p['answers']:
                         p['answers'][qtext] = ans
                         if qtext not in question_set:
-                            questions.append(qtext)
+                            questions.append({'key': qtext, 'label': qtext})
                             question_set.add(qtext)
                 # YesNoQuestion
                 for match in re.finditer(r'<YesNoQuestion[^>]*\squestion="([^"]+)"[^>]*>([^<]*)</YesNoQuestion>', person_xml):
@@ -560,7 +588,7 @@ def get_registrant_data(org_id, filter_people_ids=None):
                         ans = 'Yes' if ans_val == 'True' else 'No' if ans_val == 'False' else ans_val
                         p['answers'][qtext] = ans
                         if qtext not in question_set:
-                            questions.append(qtext)
+                            questions.append({'key': qtext, 'label': qtext})
                             question_set.add(qtext)
     except:
         pass
@@ -688,13 +716,14 @@ def get_people_data_direct(people_ids):
             p.PeopleId, p.Name2, p.FirstName, p.LastName, p.NickName,
             p.BDate, p.Age, p.GenderId, p.EmailAddress, p.CellPhone, p.HomePhone,
             p.PrimaryAddress, p.PrimaryCity, p.PrimaryState, p.PrimaryZip,
-            p.FamilyId, ISNULL(p.CustodyIssue, 0) as CustodyIssue,
+            p.FamilyId, ms.Description as MaritalStatus, ISNULL(p.CustodyIssue, 0) as CustodyIssue,
             rr.MedicalDescription, rr.MedAllergy, rr.emcontact, rr.emphone,
             rr.doctor, rr.docphone, rr.insurance, rr.policy,
             ISNULL(rr.Tylenol, 0) as Tylenol, ISNULL(rr.Advil, 0) as Advil,
             ISNULL(rr.Maalox, 0) as Maalox, ISNULL(rr.Robitussin, 0) as Robitussin,
             pic.SmallUrl as PhotoUrl
         FROM People p
+        LEFT JOIN lookup.MaritalStatus ms ON p.MaritalStatusId = ms.Id
         LEFT JOIN RecReg rr ON rr.PeopleId = p.PeopleId
         LEFT JOIN Picture pic ON pic.PictureId = p.PictureId
         WHERE p.PeopleId IN ({0})
@@ -715,6 +744,7 @@ def get_people_data_direct(people_ids):
                 'BDate': fmt_date(r.BDate),
                 'Age': str(r.Age) if r.Age else '',
                 'Gender': 'Male' if r.GenderId == 1 else 'Female' if r.GenderId == 2 else '',
+                'MaritalStatus': safe_str(r.MaritalStatus) if r.MaritalStatus else '',
                 'EmailAddress': safe_str(r.EmailAddress),
                 'CellPhone': fmt_phone(r.CellPhone),
                 'HomePhone': fmt_phone(r.HomePhone),
@@ -1033,12 +1063,14 @@ def render_report_html(people, template, org_name, questions, single_person_id=N
                 title_lower = (sec.get('title', '') or '').lower()
                 if 'question' in title_lower or 'answer' in title_lower or 'registration' in title_lower:
                     auto_fields = []
-                    for qi, qtext in enumerate(questions):
+                    for qi, qitem in enumerate(questions):
+                        q_key = qitem['key'] if isinstance(qitem, dict) else qitem
+                        q_label = qitem['label'] if isinstance(qitem, dict) else qitem
                         auto_fields.append({
                             'fieldId': 'auto_q_' + str(qi),
                             'fieldType': 'regquestion',
-                            'sourceField': qtext,
-                            'label': qtext,
+                            'sourceField': q_key,
+                            'label': q_label,
                             'displayFormat': 'block',
                             'order': qi + 1,
                             'visible': True,
@@ -1509,6 +1541,7 @@ if model.HttpMethod == "post":
                         {'sourceField': 'Age', 'label': 'Age', 'fieldType': 'person'},
                         {'sourceField': 'BDate', 'label': 'Date of Birth', 'fieldType': 'person'},
                         {'sourceField': 'Gender', 'label': 'Gender', 'fieldType': 'person'},
+                        {'sourceField': 'MaritalStatus', 'label': 'Marital Status', 'fieldType': 'person'},
                         {'sourceField': 'PrimaryAddress', 'label': 'Full Address', 'fieldType': 'person'}
                     ]
 
@@ -1532,10 +1565,12 @@ if model.HttpMethod == "post":
                     ]
 
                     question_fields = []
-                    for qtext in data['questions']:
+                    for qitem in data['questions']:
+                        q_key = qitem['key'] if isinstance(qitem, dict) else qitem
+                        q_label = qitem['label'] if isinstance(qitem, dict) else qitem
                         question_fields.append({
-                            'sourceField': qtext,
-                            'label': qtext,
+                            'sourceField': q_key,
+                            'label': q_label,
                             'fieldType': 'regquestion'
                         })
 
@@ -1585,6 +1620,7 @@ if model.HttpMethod == "post":
                         {'sourceField': 'Age', 'label': 'Age', 'fieldType': 'person'},
                         {'sourceField': 'BDate', 'label': 'Date of Birth', 'fieldType': 'person'},
                         {'sourceField': 'Gender', 'label': 'Gender', 'fieldType': 'person'},
+                        {'sourceField': 'MaritalStatus', 'label': 'Marital Status', 'fieldType': 'person'},
                         {'sourceField': 'PrimaryAddress', 'label': 'Full Address', 'fieldType': 'person'}
                     ]
                     family_fields = [
@@ -1741,6 +1777,66 @@ if model.HttpMethod == "post":
     # -------------------------------------------------------------------------
     # Get Person List (for selector dropdown)
     # -------------------------------------------------------------------------
+    elif action == 'export_csv':
+        org_id = getattr(Data, 'org_id', '')
+        template_json = getattr(Data, 'template_json', '')
+        filter_ids = parse_filter_people(getattr(Data, 'filter_people', ''))
+
+        if not org_id or not template_json:
+            print json.dumps({'success': False, 'message': 'Organization and template required'})
+        else:
+            try:
+                template = json.loads(template_json)
+                if str(org_id) == 'bt_direct':
+                    data = get_people_data_direct(filter_ids)
+                else:
+                    org_id = int(org_id)
+                    data = get_registrant_data(org_id, filter_ids)
+                ev_names = extract_ev_names_from_template(template)
+                if ev_names:
+                    fetch_extra_values(data['people'], ev_names)
+
+                # Build CSV headers and field definitions from template sections
+                csv_headers = []
+                csv_fields = []
+                for section in template.get('sections', []):
+                    for field in section.get('fields', []):
+                        ft = field.get('fieldType', '')
+                        if ft == 'static':
+                            continue  # Skip separators and static text in CSV
+                        label = field.get('label', field.get('sourceField', ''))
+                        if label:
+                            csv_headers.append(label)
+                            csv_fields.append(field)
+
+                # Build CSV rows using the same get_field_value() as report rendering
+                csv_rows = []
+                for person in data.get('people', []):
+                    row = []
+                    for field in csv_fields:
+                        val = get_field_value(person, field)
+                        # Strip HTML entities back to plain text for CSV
+                        val = val.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"').replace('&#39;', "'")
+                        row.append(val)
+                    csv_rows.append(row)
+
+                # Build CSV string
+                def csv_escape(v):
+                    s = safe_str(v)
+                    if ',' in s or '"' in s or '\n' in s:
+                        return '"' + s.replace('"', '""') + '"'
+                    return s
+
+                csv_lines = []
+                csv_lines.append(','.join(csv_escape(h) for h in csv_headers))
+                for row in csv_rows:
+                    csv_lines.append(','.join(csv_escape(c) for c in row))
+                csv_text = '\n'.join(csv_lines)
+
+                print json.dumps(sanitize_for_json({'success': True, 'csv': csv_text, 'personCount': len(csv_rows)}))
+            except Exception as e:
+                print json.dumps({'success': False, 'message': safe_str(e)})
+
     elif action == 'get_person_list':
         org_id = getattr(Data, 'org_id', '')
         filter_ids = parse_filter_people(getattr(Data, 'filter_people', ''))
@@ -2257,6 +2353,14 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid #cbd5e0; bord
                         <label class="rr-toggle"><input type="checkbox" id="rrOptShowOrgHeader" checked onchange="updatePrintSetting('showOrgHeader', this.checked)"><span class="rr-toggle-slider"></span></label>
                     </div>
                     <div class="rr-option-row">
+                        <span class="rr-option-label">Show page numbers</span>
+                        <label class="rr-toggle"><input type="checkbox" id="rrOptPageNumbers" onchange="updatePrintSetting('showPageNumbers', this.checked)"><span class="rr-toggle-slider"></span></label>
+                    </div>
+                    <div class="rr-option-row">
+                        <span class="rr-option-label">Allow sections to split across pages</span>
+                        <label class="rr-toggle"><input type="checkbox" id="rrOptSplitSections" onchange="updatePrintSetting('allowSectionSplit', this.checked)"><span class="rr-toggle-slider"></span></label>
+                    </div>
+                    <div class="rr-option-row">
                         <span class="rr-option-label">Compact row spacing</span>
                         <label class="rr-toggle"><input type="checkbox" id="rrOptCompactRows" onchange="updateGlobalOption('compactRows', this.checked)"><span class="rr-toggle-slider"></span></label>
                     </div>
@@ -2338,12 +2442,16 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid #cbd5e0; bord
                 <button class="rr-btn rr-btn-primary" onclick="saveTemplate()"><i class="fa fa-save"></i> Save Template</button>
                 <button class="rr-btn rr-btn-success" onclick="generateFullReport()"><i class="fa fa-file-text-o"></i> Generate Report</button>
                 <button class="rr-btn rr-btn-secondary" id="rrPrintBtn" style="display:none;" onclick="printReport()"><i class="fa fa-print"></i> Print Report</button>
+                <button class="rr-btn rr-btn-secondary" id="rrCsvBtn" style="display:none;" onclick="exportCsv()"><i class="fa fa-download"></i> Export CSV</button>
             </div>
         </div>
         <div id="rrGeneratedReport" class="rr-card" style="display:none;">
             <div class="rr-card-title" style="display:flex; justify-content:space-between; align-items:center;">
                 Generated Report
+                <span>
                 <button class="rr-btn rr-btn-secondary rr-btn-sm" onclick="printReport()"><i class="fa fa-print"></i> Print</button>
+                <button class="rr-btn rr-btn-secondary rr-btn-sm" onclick="exportCsv()"><i class="fa fa-download"></i> CSV</button>
+                </span>
             </div>
             <div id="rrReportContent"></div>
         </div>
@@ -2527,6 +2635,8 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid #cbd5e0; bord
             setChecked('rrOptOnePerPage', ps.onePersonPerPage !== false);
             setChecked('rrOptShowOrgHeader', ps.showOrgHeader !== false);
             setChecked('rrOptCompactRows', go.compactRows === true);
+            setChecked('rrOptPageNumbers', ps.showPageNumbers === true);
+            setChecked('rrOptSplitSections', ps.allowSectionSplit === true);
             document.getElementById('rrOptHeadingColor').value = go.headingColor || '#2c5282';
             // Supplemental page toggles
             setChecked('rrOptCoverPage', ps.showCoverPage === true);
@@ -2982,6 +3092,7 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid #cbd5e0; bord
                 state.generatedHtml = data.html;
                 document.getElementById('rrReportContent').innerHTML = data.html;
                 document.getElementById('rrPrintBtn').style.display = 'inline-block';
+                document.getElementById('rrCsvBtn').style.display = 'inline-block';
                 showToast('Report generated for ' + (data.personCount || 0) + ' registrants!', 'success');
             } else { document.getElementById('rrReportContent').innerHTML = '<div class="rr-empty">Error: ' + (data.message || 'Unknown') + '</div>'; }
         });
@@ -3002,7 +3113,8 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid #cbd5e0; bord
         css += '.rr-person-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:8px;border-bottom:1px solid #e2e8f0}';
         css += '.rr-photo{width:50px;height:50px;border-radius:6px;object-fit:cover}';
         css += '.rr-person-name{font-size:22px;font-weight:700}';
-        css += '.rr-section{margin-bottom:16px;page-break-inside:avoid}';
+        var allowSplit = ((state.template.printSettings || {}).allowSectionSplit === true);
+        css += '.rr-section{margin-bottom:16px' + (allowSplit ? '' : ';page-break-inside:avoid') + '}';
         css += '.rr-section-header{padding:6px 12px;color:#fff;font-weight:700;font-size:14px;border-radius:4px 4px 0 0}';
         css += '.rr-fields-grid{border:1px solid #ccc;border-top:none;border-radius:0 0 4px 4px;padding:10px 12px}';
         css += '.rr-two-col{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px}';
@@ -3027,6 +3139,13 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid #cbd5e0; bord
         css += '.rr-missing-page{position:relative}';
         css += '.rr-medical-page{position:relative}';
         css += '.rr-cover-page table,.rr-missing-page table,.rr-medical-page table{font-size:13px}';
+        // Page numbers via @page CSS (actual printed page numbers)
+        var showPageNums = ((state.template.printSettings || {}).showPageNumbers === true);
+        if (showPageNums) {
+            css += '@page{margin-bottom:30px;@bottom-center{content:"Page " counter(page);font-size:10px;color:#999}}';
+            // Fallback for browsers that don't support @page @bottom-center
+            css += '@media print{body::after{content:"";display:block;height:0}}';
+        }
         var pw = window.open('', '_blank');
         if (!pw) { showToast('Popup blocked - please allow popups for this site', 'danger'); return; }
         pw.document.write('<!DOCTYPE html><html><head><title>Registration Report</title>');
@@ -3037,6 +3156,24 @@ input[type="color"] { width: 36px; height: 28px; border: 1px solid #cbd5e0; bord
         pw.document.close();
         pw.focus();
         setTimeout(function() { pw.print(); }, 300);
+    };
+
+    window.exportCsv = function() {
+        if (!state.selectedOrgId || !state.template) { showToast('Generate the report first', 'danger'); return; }
+        showToast('Exporting CSV...', 'info');
+        ajax('export_csv', { org_id: state.selectedOrgId, template_json: JSON.stringify(state.template) }, function(data) {
+            if (data.success) {
+                var blob = new Blob([data.csv], { type: 'text/csv;charset=utf-8;' });
+                var link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'report_export.csv';
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                showToast('CSV exported (' + (data.personCount || 0) + ' records)', 'success');
+            } else { showToast('CSV export failed: ' + (data.message || 'Unknown error'), 'danger'); }
+        });
     };
 
     function escHtml(str) {
