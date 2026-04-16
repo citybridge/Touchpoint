@@ -1,28 +1,17 @@
-# Written By: Ben Swaby
-# Email: bswaby@fbchtn.org
-# GitHub:  https://github.com/bswaby/Touchpoint
-# ---------------------------------------------------------------
-# Support: These tools are free because they should be. If they've
-#          saved you time, consider DisplayCache — church digital
-#          signage that integrates with TouchPoint.
-#          https://displaycache.com
-# ---------------------------------------------------------------
-
 """
-Mission Dashboard 4.0.0 - Sidebar Navigation Redesign
+Mission Dashboard 4.1.0
 ======================================================
 Purpose: Comprehensive mission trip management dashboard with sidebar navigation
 Author: Ben Swaby
 Email: bswaby@fbchtn.org
 
 Features:
-- NEW: Sidebar navigation with expandable trip sections (like ManagedMissions)
-- NEW: Role-based views (Admins see all trips, Leaders see only their trips)
-- NEW: Trip-specific sections (Overview, Team, Meetings, Budget, Documents, Messages, Tasks)
-- NEW: Mobile-responsive collapsible sidebar
+- Sidebar navigation with expandable trip sections
+- Role-based views (Admins see all trips, Leaders see only their trips)
+- Trip-specific sections (Overview, Team, Meetings, Budget, Documents, Messages, Tasks)
+- Mobile-responsive collapsible sidebar
 - Prominent upcoming deadlines at top
-- SQL debug output in HTML comments (when enabled)
-- Performance optimized queries (now ~1 second vs 47 seconds)
+- Performance optimized queries (~1 second)
 - AJAX loading for detailed data
 
 Role-Based Access:
@@ -33,6 +22,25 @@ Role-Based Access:
 Financial Permissions:
 - Fee adjustments require one of: Finance, FinanceAdmin, or ManageTransactions role
 - Users with "Edit" role can VIEW financial data but cannot MODIFY without finance role
+
+Change Log:
+v4.1.0 - April 2026
+  - Added: Persistent configuration stored in Special Content (survives code updates)
+  - Added: Settings UI with tabbed layout (Approval Workflow, Quick Email Templates, Dashboard Configuration)
+  - Added: All Config class values editable from Dashboard Configuration tab
+  - Added: Dynamic church URL via model.CmsHost (removed hardcoded domain references)
+  - Added: Configurable "Share My Missions" link in settings
+  - Fixed: let/var conflict with queryStartTime declaration
+  - Changed: Config class now serves as defaults; saved settings in Special Content take priority
+  - Note: Existing code customizations to Config class continue to work until settings are saved
+    from the UI. After that, the UI-saved values take priority.
+
+v4.0.0 - March 2026
+  - Sidebar navigation redesign
+  - Role-based views
+  - Trip-specific sections
+  - Mobile-responsive collapsible sidebar
+  - Performance optimized queries
 
 --Upload Instructions Start--
 To upload code to Touchpoint, use the following steps:
@@ -52,12 +60,24 @@ To upload code to Touchpoint, use the following steps:
 # SCRIPT-LEVEL DEBUG REMOVED - model.Data not available at script level
 
 #####################################################################
-# CONFIGURATION SECTION - Customize for your environment
+# CONFIGURATION SECTION
+#####################################################################
+# These values serve as DEFAULTS. Once you save settings from the
+# Dashboard Configuration tab (Settings > Dashboard Configuration),
+# your saved values are stored in Special Content as JSON and take
+# priority over these defaults on every script load.
+#
+# This means:
+#   1. You can safely update this script without losing your settings
+#   2. Settings saved from the UI survive code updates
+#   3. Any value NOT saved from the UI falls back to these defaults
+#   4. To reset a setting to default, delete the Special Content
+#      file named "TPxi_MissionsDashboard_Config"
 #####################################################################
 
 # ::START:: Configuration
 class Config:
-    """Centralized configuration for easy customization"""
+    """Default configuration values. Overridden by saved settings in Special Content."""
     
     # Organization Settings
     ACTIVE_ORG_STATUS_ID = 30  # Organization status ID for active missions
@@ -81,6 +101,10 @@ class Config:
     SEND_PAYMENT_REMINDERS = False
     PAYMENT_REMINDER_TEMPLATE = "MissionPaymentReminder" #future feature
     
+    # Church Sharing Link (shown to admins/leaders to share with team members)
+    # Change this to your church's public-facing URL for the missions page
+    MY_MISSIONS_LINK = ""  # e.g., "https://yourchurch.com/MyMissions" - leave empty to auto-generate from CmsHost
+
     # Currency Settings
     CURRENCY_SYMBOL = "$"
     USE_THOUSANDS_SEPARATOR = True
@@ -200,7 +224,7 @@ We need your passport information for the upcoming {{TripName}} mission trip.
 
 Please complete the passport form at the link below:
 
-https://myfbch.com/OnlineReg/3421
+{{ChurchUrl}}/OnlineReg/3421
 
 This form will collect your passport number, expiration date, and other travel details we need for trip planning.
 
@@ -240,14 +264,87 @@ Blessings'''
 import datetime
 import re
 
+# Church base URL - dynamically set from TouchPoint
+CHURCH_URL = str(model.CmsHost) if hasattr(model, 'CmsHost') and model.CmsHost else 'https://myfbch.com'
+# Ensure it has https://
+if not CHURCH_URL.startswith('http'):
+    CHURCH_URL = 'https://' + CHURCH_URL
+# Remove trailing slash
+CHURCH_URL = CHURCH_URL.rstrip('/')
+
+# Resolve MyMissions sharing link
+MY_MISSIONS_LINK = Config.MY_MISSIONS_LINK or (CHURCH_URL + '/PyScriptForm/Mission_Dashboard')
+# Display-friendly version (without https://)
+MY_MISSIONS_DISPLAY = MY_MISSIONS_LINK.replace('https://', '').replace('http://', '')
+
 # Set page header (no debug output - breaks AJAX JSON responses)
 try:
     model.Header = "Missions Dashboard"
 except Exception as e:
     pass  # Silently ignore if not in TouchPoint context
 
-# Initialize configuration
-config = Config()
+# Initialize configuration with persistent settings from Special Content
+CONFIG_CONTENT_NAME = 'TPxi_MissionsDashboard_Config'
+
+def load_config():
+    """Load config from Special Content, merge with defaults"""
+    config = Config()
+    try:
+        stored = model.TextContent(CONFIG_CONTENT_NAME)
+        if stored and stored.strip():
+            import json as _json
+            saved = _json.loads(stored)
+            if isinstance(saved, dict):
+                for key, val in saved.items():
+                    if hasattr(config, key) and val is not None:
+                        default_val = getattr(config, key)
+                        # Ensure type consistency with defaults
+                        if isinstance(default_val, list) and isinstance(val, str):
+                            # Convert comma-separated string back to list
+                            if default_val and isinstance(default_val[0], int):
+                                val = [int(x.strip()) for x in val.split(',') if x.strip()]
+                            else:
+                                val = [x.strip() for x in val.split(',') if x.strip()]
+                        elif isinstance(default_val, int) and not isinstance(val, int):
+                            try:
+                                val = int(val)
+                            except:
+                                continue
+                        elif isinstance(default_val, bool) and not isinstance(val, bool):
+                            val = str(val).lower() in ('true', '1', 'yes')
+                        setattr(config, key, val)
+    except Exception as e:
+        pass
+    return config
+
+def save_config(config):
+    """Save current config to Special Content"""
+    import json as _json
+    # Build dict of all configurable settings
+    data = {
+        'ACTIVE_ORG_STATUS_ID': config.ACTIVE_ORG_STATUS_ID,
+        'MISSION_TRIP_FLAG': config.MISSION_TRIP_FLAG,
+        'MEMBER_TYPE_LEADER': config.MEMBER_TYPE_LEADER,
+        'ATTENDANCE_TYPE_LEADER': config.ATTENDANCE_TYPE_LEADER,
+        'ITEMS_PER_PAGE': config.ITEMS_PER_PAGE,
+        'SHOW_CLOSED_BY_DEFAULT': config.SHOW_CLOSED_BY_DEFAULT,
+        'ENABLE_SQL_DEBUG': config.ENABLE_SQL_DEBUG,
+        'SEND_PAYMENT_REMINDERS': config.SEND_PAYMENT_REMINDERS,
+        'MY_MISSIONS_LINK': config.MY_MISSIONS_LINK,
+        'CURRENCY_SYMBOL': config.CURRENCY_SYMBOL,
+        'ADMIN_ROLES': config.ADMIN_ROLES,
+        'FINANCE_ROLES': config.FINANCE_ROLES,
+        'LEADER_MEMBER_TYPES': config.LEADER_MEMBER_TYPES,
+        'SIDEBAR_BG_COLOR': config.SIDEBAR_BG_COLOR,
+        'SIDEBAR_ACTIVE_COLOR': config.SIDEBAR_ACTIVE_COLOR,
+        'APPLICATION_ORG_IDS': config.APPLICATION_ORG_IDS,
+        'ENABLE_STATS_TAB': config.ENABLE_STATS_TAB,
+        'ENABLE_FINANCE_TAB': config.ENABLE_FINANCE_TAB,
+        'ENABLE_MESSAGES_TAB': config.ENABLE_MESSAGES_TAB,
+    }
+    model.WriteContentText(CONFIG_CONTENT_NAME, _json.dumps(data, indent=2), "")
+
+config = load_config()
 
 # Check if function library exists and load it
 try:
@@ -1801,7 +1898,7 @@ def render_trip_overview(org_id, user_role):
                 <div>
                     <strong style="color: #ffc107;">&#127758; Share My Missions Link</strong>
                     <p style="margin: 4px 0 0 0; font-size: 13px; color: rgba(255,255,255,0.7);">
-                        Share <strong>FBCHville.com/MyMissions</strong> with team members to view their trip details, payments, and meetings.
+                        Share <strong>{my_missions_display}</strong> with team members to view their trip details, payments, and meetings.
                     </p>
                 </div>
                 <button onclick="copyMyMissionsLink()" class="hero-btn" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); padding: 6px 12px; font-size: 13px;">
@@ -1811,7 +1908,7 @@ def render_trip_overview(org_id, user_role):
         </div>
         <script>
         function copyMyMissionsLink() {{
-            var link = 'https://FBCHville.com/MyMissions';
+            var link = '{my_missions_link}';
             if (navigator.clipboard) {{
                 navigator.clipboard.writeText(link).then(function() {{
                     alert('Link copied!\\n\\n' + link + '\\n\\nTeam members can use this link to view their trip details, payment status, and upcoming meetings.');
@@ -1821,7 +1918,7 @@ def render_trip_overview(org_id, user_role):
             }}
         }}
         </script>
-        '''.format(org_id))
+        '''.format(org_id, my_missions_link=MY_MISSIONS_LINK, my_missions_display=MY_MISSIONS_DISPLAY))
 
     html.append('</div>')  # trip-hero
 
@@ -7627,7 +7724,7 @@ def get_popup_script():
     return '''
     <script>
     // Performance monitoring
-    let queryStartTime = new Date();
+    var queryStartTime = new Date();
     
     // Get the PyScriptForm address dynamically
     function getPyScriptFormAddress() {
@@ -8289,7 +8386,8 @@ def get_email_javascript(is_admin=False):
         replacePlaceholders: function(text) {
             var result = text;
 
-            // Trip name
+            // Church URL and Trip name
+            result = result.replace(/\\{\\{ChurchUrl\\}\\}/g, window.location.origin);
             result = result.replace(/\\{\\{TripName\\}\\}/g, this.currentTripName || 'the mission trip');
 
             // Person name (first name if individual, 'Team' if team email)
@@ -8601,7 +8699,7 @@ def get_email_javascript(is_admin=False):
             var body = 'Hi ' + firstName + ',\\n\\n' +
                 'We need your passport information for the upcoming ' + tripName + ' mission trip.\\n\\n' +
                 'Please complete the passport form at the link below:\\n\\n' +
-                'https://myfbch.com/OnlineReg/3421\\n\\n' +
+                CHURCH_URL + '/OnlineReg/3421\\n\\n' +
                 'This form will collect your passport number, expiration date, and other travel details we need for trip planning.\\n\\n' +
                 'Please complete this as soon as possible so we can finalize travel arrangements.\\n\\n' +
                 'Thank you!\\n\\n' +
@@ -11087,6 +11185,14 @@ def handle_ajax_request():
         # AJAX request to delete an email dropdown template
         return handle_delete_dropdown_template()
 
+    elif action == 'get_config':
+        # AJAX request to get dashboard configuration
+        return handle_get_config()
+
+    elif action == 'save_config':
+        # AJAX request to save dashboard configuration
+        return handle_save_config()
+
     elif action == 'get_global_settings':
         # AJAX request to get global dashboard settings
         return handle_get_global_settings()
@@ -11450,11 +11556,11 @@ def _personalize_email_body(body, people_id, org_id):
     person_name = person.Name if person else ""
 
     # Build personalized links
-    my_giving_link = "https://myfbch.com/Person2/{0}#tab-registrations".format(people_id)
+    my_giving_link = "{0}/Person2/{1}#tab-registrations".format(CHURCH_URL, people_id)
 
     # Support link requires org_id
     if org_id:
-        support_link = "https://myfbch.com/OnlineReg/{0}?goerid={1}".format(org_id, people_id)
+        support_link = "{0}/OnlineReg/{1}?goerid={2}".format(CHURCH_URL, org_id, people_id)
     else:
         support_link = ""
 
@@ -11466,6 +11572,8 @@ def _personalize_email_body(body, people_id, org_id):
     result = result.replace('{{supportlink}}', support_link)
     result = result.replace('{{PersonName}}', person_name)
     result = result.replace('{{personname}}', person_name)
+    result = result.replace('{{ChurchUrl}}', CHURCH_URL)
+    result = result.replace('{{churchurl}}', CHURCH_URL)
 
     return result
 
@@ -11506,7 +11614,7 @@ def handle_send_email():
         current_user_id = model.UserPeopleId
         current_user = model.GetPerson(current_user_id)
 
-        from_email = current_user.EmailAddress if current_user and current_user.EmailAddress else "noreply@fbchtn.org"
+        from_email = current_user.EmailAddress if current_user and current_user.EmailAddress else ""
         from_name = current_user.Name if current_user else "Missions Dashboard"
 
         # Parse recipients (comma-separated)
@@ -12431,7 +12539,7 @@ DEFAULT_DROPDOWN_TEMPLATES = [
         'type': 'individual',
         'role': 'admin',
         'subject': '{{TripName}} - Passport Information Needed',
-        'body': 'Hi {{PersonName}},\\n\\nWe need your passport information for the upcoming {{TripName}} mission trip.\\n\\nPlease complete the passport form at the link below:\\n\\nhttps://myfbch.com/OnlineReg/3421\\n\\nThis form will collect your passport number, expiration date, and other travel details we need for trip planning.\\n\\nPlease complete this as soon as possible so we can finalize travel arrangements.\\n\\nThank you!\\n\\nBlessings'
+        'body': 'Hi {{PersonName}},\\n\\nWe need your passport information for the upcoming {{TripName}} mission trip.\\n\\nPlease complete the passport form at the link below:\\n\\n{{ChurchUrl}}/OnlineReg/3421\\n\\nThis form will collect your passport number, expiration date, and other travel details we need for trip planning.\\n\\nPlease complete this as soon as possible so we can finalize travel arrangements.\\n\\nThank you!\\n\\nBlessings'
     },
     {
         'id': 'meeting_reminder',
@@ -12711,6 +12819,98 @@ def handle_delete_dropdown_template():
 # =====================================================
 # GLOBAL SETTINGS HANDLERS
 # =====================================================
+
+def handle_get_config():
+    """Handle AJAX request to get dashboard configuration."""
+    import json
+    try:
+        user_role = get_user_role_and_trips()
+        if not user_role.get('is_admin', False):
+            print json.dumps({'success': False, 'message': 'Access denied. Admin role required.'})
+            return True
+
+        data = {
+            'ACTIVE_ORG_STATUS_ID': config.ACTIVE_ORG_STATUS_ID,
+            'MISSION_TRIP_FLAG': config.MISSION_TRIP_FLAG,
+            'MEMBER_TYPE_LEADER': config.MEMBER_TYPE_LEADER,
+            'ATTENDANCE_TYPE_LEADER': config.ATTENDANCE_TYPE_LEADER,
+            'ITEMS_PER_PAGE': config.ITEMS_PER_PAGE,
+            'SHOW_CLOSED_BY_DEFAULT': config.SHOW_CLOSED_BY_DEFAULT,
+            'ENABLE_SQL_DEBUG': config.ENABLE_SQL_DEBUG,
+            'MY_MISSIONS_LINK': config.MY_MISSIONS_LINK,
+            'CURRENCY_SYMBOL': config.CURRENCY_SYMBOL,
+            'ADMIN_ROLES': ','.join(config.ADMIN_ROLES) if isinstance(config.ADMIN_ROLES, list) else config.ADMIN_ROLES,
+            'FINANCE_ROLES': ','.join(config.FINANCE_ROLES) if isinstance(config.FINANCE_ROLES, list) else config.FINANCE_ROLES,
+            'LEADER_MEMBER_TYPES': ','.join(str(x) for x in config.LEADER_MEMBER_TYPES) if isinstance(config.LEADER_MEMBER_TYPES, list) else config.LEADER_MEMBER_TYPES,
+            'SIDEBAR_BG_COLOR': config.SIDEBAR_BG_COLOR,
+            'SIDEBAR_ACTIVE_COLOR': config.SIDEBAR_ACTIVE_COLOR,
+            'APPLICATION_ORG_IDS': ','.join(str(x) for x in config.APPLICATION_ORG_IDS) if isinstance(config.APPLICATION_ORG_IDS, list) else config.APPLICATION_ORG_IDS,
+            'ENABLE_STATS_TAB': config.ENABLE_STATS_TAB,
+            'ENABLE_FINANCE_TAB': config.ENABLE_FINANCE_TAB,
+            'ENABLE_MESSAGES_TAB': config.ENABLE_MESSAGES_TAB,
+        }
+        print json.dumps({'success': True, 'config': data})
+    except Exception as e:
+        print json.dumps({'success': False, 'message': str(e)})
+    return True
+
+
+def handle_save_config():
+    """Handle AJAX request to save dashboard configuration."""
+    import json
+    try:
+        user_role = get_user_role_and_trips()
+        if not user_role.get('is_admin', False):
+            print json.dumps({'success': False, 'message': 'Access denied. Admin role required.'})
+            return True
+
+        # Read each setting from the request
+        fields = [
+            ('ACTIVE_ORG_STATUS_ID', 'int'), ('MISSION_TRIP_FLAG', 'int'),
+            ('MEMBER_TYPE_LEADER', 'int'), ('ATTENDANCE_TYPE_LEADER', 'int'),
+            ('ITEMS_PER_PAGE', 'int'), ('SHOW_CLOSED_BY_DEFAULT', 'bool'),
+            ('ENABLE_SQL_DEBUG', 'bool'), ('MY_MISSIONS_LINK', 'str'),
+            ('CURRENCY_SYMBOL', 'str'), ('ADMIN_ROLES', 'list'),
+            ('FINANCE_ROLES', 'list'), ('LEADER_MEMBER_TYPES', 'intlist'),
+            ('SIDEBAR_BG_COLOR', 'str'), ('SIDEBAR_ACTIVE_COLOR', 'str'),
+            ('APPLICATION_ORG_IDS', 'intlist'),
+            ('ENABLE_STATS_TAB', 'bool'), ('ENABLE_FINANCE_TAB', 'bool'),
+            ('ENABLE_MESSAGES_TAB', 'bool'),
+        ]
+
+        for field_name, field_type in fields:
+            if hasattr(Data, field_name):
+                raw = str(getattr(Data, field_name)).strip()
+                # Skip empty values for non-string/non-bool types to preserve defaults
+                if not raw and field_type in ('int', 'list', 'intlist'):
+                    continue
+                if field_type == 'int':
+                    try:
+                        setattr(config, field_name, int(raw))
+                    except:
+                        continue  # Keep default if parse fails
+                elif field_type == 'bool':
+                    setattr(config, field_name, raw.lower() in ('true', '1', 'yes'))
+                elif field_type == 'list':
+                    parsed = [x.strip() for x in raw.split(',') if x.strip()]
+                    if parsed:
+                        setattr(config, field_name, parsed)
+                elif field_type == 'intlist':
+                    try:
+                        parsed = [int(x.strip()) for x in raw.split(',') if x.strip()]
+                        if parsed:
+                            setattr(config, field_name, parsed)
+                    except:
+                        continue  # Keep default if parse fails
+                else:
+                    setattr(config, field_name, raw)
+
+        save_config(config)
+        print json.dumps({'success': True, 'message': 'Configuration saved'})
+    except Exception as e:
+        print json.dumps({'success': False, 'message': str(e)})
+    return True
+
 
 def handle_get_global_settings():
     """Handle AJAX request to get global dashboard settings."""
@@ -13661,10 +13861,10 @@ def render_member_dashboard_view(user_role):
     # Bookmark reminder
     print '''
         <div style="margin-top: 30px; padding: 16px; background: #e7f3ff; border: 1px solid #b8daff; border-radius: 8px; text-align: center;">
-            <strong>&#128278; Tip:</strong> Bookmark this page (<strong>FBCHville.com/MyMissions</strong>) for quick access to your trip information!
+            <strong>&#128278; Tip:</strong> Bookmark this page (<strong>{my_missions_display}</strong>) for quick access to your trip information!
         </div>
     </div>
-    '''
+    '''.format(my_missions_display=MY_MISSIONS_DISPLAY)
 
 
 def render_member_trip_card(trip, user_id, user_role):
@@ -13867,13 +14067,13 @@ def render_member_trip_card(trip, user_id, user_role):
     # Single link to Person2 registrations tab which has funding page and email supporter links
     print '''
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <a href="https://myfbch.com/Person2/{0}#tab-registrations" target="_blank"
+            <a href="{church_url}/Person2/{0}#tab-registrations" target="_blank"
                style="flex: 1; min-width: 150px; padding: 12px 16px; background: #007bff; color: white; text-decoration: none;
                       border-radius: 8px; text-align: center; font-weight: 600;">
                 &#128179; View My Trip Details
             </a>
         </div>
-    '''.format(user_id)
+    '''.format(user_id, church_url=CHURCH_URL)
 
     # Leader link if they're a leader
     if is_leader:
@@ -16709,6 +16909,30 @@ def render_settings_view(user_role):
     <div class="settings-view">
         <h2 style="margin-bottom: 20px;">&#9881; Dashboard Settings</h2>
 
+        <!-- Settings Tabs -->
+        <div style="display:flex; border-bottom:2px solid #dee2e6; margin-bottom:20px; gap:4px;">
+            <div class="settings-tab active" onclick="switchSettingsTab('approvals')" id="stab-approvals" style="padding:10px 20px; font-size:14px; font-weight:600; color:#888; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px;">Approval Workflow</div>
+            <div class="settings-tab" onclick="switchSettingsTab('templates')" id="stab-templates" style="padding:10px 20px; font-size:14px; font-weight:600; color:#888; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px;">Quick Email Templates</div>
+            <div class="settings-tab" onclick="switchSettingsTab('config')" id="stab-config" style="padding:10px 20px; font-size:14px; font-weight:600; color:#888; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-2px;">Dashboard Configuration</div>
+        </div>
+        <style>
+            .settings-tab.active { color: #0d6efd !important; border-bottom-color: #0d6efd !important; }
+            .settings-tab:hover { color: #0d6efd !important; }
+            .settings-tab-content { display: none; }
+            .settings-tab-content.active { display: block; }
+        </style>
+        <script>
+        function switchSettingsTab(name) {
+            document.querySelectorAll('.settings-tab-content').forEach(function(el) { el.classList.remove('active'); });
+            document.querySelectorAll('.settings-tab').forEach(function(el) { el.classList.remove('active'); });
+            document.getElementById('stab-' + name).classList.add('active');
+            document.getElementById('stab-content-' + name).classList.add('active');
+        }
+        </script>
+
+        <!-- TAB: Approval Workflow -->
+        <div id="stab-content-approvals" class="settings-tab-content active">
+
         <!-- Approval Workflow Settings Section -->
         <div class="card" style="margin-bottom: 20px;">
             <div class="card-header">
@@ -16748,8 +16972,129 @@ def render_settings_view(user_role):
             </div>
         </div>
 
+        </div> <!-- end TAB: Approval Workflow -->
+
+        <!-- TAB: Dashboard Configuration -->
+        <div id="stab-content-config" class="settings-tab-content">
+
+        <!-- Dashboard Configuration Section -->
+        <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h4>&#128295; Dashboard Configuration</h4>
+                <button type="button" class="btn btn-primary btn-sm" id="saveConfigBtn" onclick="DashConfig.save()" style="display:none;">Save Changes</button>
+            </div>
+            <div class="card-body" id="configPanel">
+                <p class="text-muted" style="margin-bottom:16px;">These settings are stored separately from the script code and survive updates.</p>
+                <div id="configLoading" style="color:#888;">Loading configuration...</div>
+                <div id="configForm" style="display:none;"></div>
+                <div id="configStatus" style="margin-top:12px; font-size:13px;"></div>
+            </div>
+        </div>
+        <script>
+        var DashConfig = {
+            original: null,
+            load: function() {
+                $.ajax({
+                    url: (function(){ var p = window.location.pathname; if (p.indexOf('/PyScript/') >= 0) p = p.replace('/PyScript/', '/PyScriptForm/'); return p; })(),
+                    type: 'POST',
+                    data: { action: 'get_config' },
+                    success: function(resp) {
+                        try {
+                            var data = JSON.parse(resp);
+                            if (data.success) {
+                                DashConfig.original = data.config;
+                                DashConfig.render(data.config);
+                            } else {
+                                document.getElementById('configLoading').innerHTML = '<span style="color:red;">' + (data.message || 'Error') + '</span>';
+                            }
+                        } catch(e) {
+                            document.getElementById('configLoading').innerHTML = '<span style="color:red;">Error loading config</span>';
+                        }
+                    }
+                });
+            },
+            render: function(cfg) {
+                document.getElementById('configLoading').style.display = 'none';
+                document.getElementById('configForm').style.display = 'block';
+                document.getElementById('saveConfigBtn').style.display = 'inline-block';
+                var h = '<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">';
+                h += DashConfig.field('MY_MISSIONS_LINK', 'Share Link (MyMissions URL)', cfg.MY_MISSIONS_LINK, 'text', 'Leave empty to auto-generate');
+                h += DashConfig.field('CURRENCY_SYMBOL', 'Currency Symbol', cfg.CURRENCY_SYMBOL, 'text');
+                h += DashConfig.field('ITEMS_PER_PAGE', 'Items Per Page', cfg.ITEMS_PER_PAGE, 'number');
+                h += DashConfig.field('MEMBER_TYPE_LEADER', 'Leader Member Type ID', cfg.MEMBER_TYPE_LEADER, 'number');
+                h += DashConfig.field('ATTENDANCE_TYPE_LEADER', 'Leader Attendance Type ID', cfg.ATTENDANCE_TYPE_LEADER, 'number');
+                h += DashConfig.field('SIDEBAR_BG_COLOR', 'Sidebar Background Color', cfg.SIDEBAR_BG_COLOR, 'color');
+                h += DashConfig.field('SIDEBAR_ACTIVE_COLOR', 'Sidebar Active Color', cfg.SIDEBAR_ACTIVE_COLOR, 'color');
+                h += DashConfig.check('SHOW_CLOSED_BY_DEFAULT', 'Show Closed Trips by Default', cfg.SHOW_CLOSED_BY_DEFAULT);
+                h += DashConfig.check('ENABLE_SQL_DEBUG', 'Enable SQL Debug Output', cfg.ENABLE_SQL_DEBUG);
+                h += DashConfig.check('ENABLE_STATS_TAB', 'Enable Stats Tab', cfg.ENABLE_STATS_TAB);
+                h += DashConfig.check('ENABLE_FINANCE_TAB', 'Enable Finance Tab', cfg.ENABLE_FINANCE_TAB);
+                h += DashConfig.check('ENABLE_MESSAGES_TAB', 'Enable Messages Tab', cfg.ENABLE_MESSAGES_TAB);
+                h += '</div>';
+                h += '<div style="margin-top:16px; border-top:1px solid #e0e0e0; padding-top:16px;">';
+                h += '<h5 style="margin-bottom:12px;">Roles & Permissions</h5>';
+                h += DashConfig.field('ADMIN_ROLES', 'Admin Roles (comma-separated)', cfg.ADMIN_ROLES, 'text');
+                h += DashConfig.field('FINANCE_ROLES', 'Finance Roles (comma-separated)', cfg.FINANCE_ROLES, 'text');
+                h += DashConfig.field('LEADER_MEMBER_TYPES', 'Leader Member Type IDs (comma-separated)', cfg.LEADER_MEMBER_TYPES, 'text');
+                h += DashConfig.field('APPLICATION_ORG_IDS', 'Application Org IDs to Exclude (comma-separated)', cfg.APPLICATION_ORG_IDS, 'text');
+                h += '</div>';
+                document.getElementById('configForm').innerHTML = h;
+            },
+            field: function(name, label, value, type, hint) {
+                var inp = type === 'color'
+                    ? '<input type="color" name="' + name + '" value="' + (value || '#000000') + '" style="height:36px;border:1px solid #ccc;border-radius:4px;">'
+                    : '<input type="' + (type || 'text') + '" name="' + name + '" value="' + (value || '').toString().replace(/"/g, '&quot;') + '" style="width:100%;padding:6px 8px;border:1px solid #ccc;border-radius:4px;font-size:13px;" placeholder="' + (hint || '') + '">';
+                return '<div style="margin-bottom:8px;"><label style="font-size:12px;font-weight:600;color:#555;display:block;margin-bottom:3px;">' + label + '</label>' + inp + '</div>';
+            },
+            check: function(name, label, value) {
+                return '<div style="margin-bottom:8px;"><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;"><input type="checkbox" name="' + name + '"' + (value ? ' checked' : '') + '> ' + label + '</label></div>';
+            },
+            save: function() {
+                var form = document.getElementById('configForm');
+                var data = { action: 'save_config' };
+                var inputs = form.querySelectorAll('input');
+                for (var i = 0; i < inputs.length; i++) {
+                    var inp = inputs[i];
+                    if (inp.type === 'checkbox') {
+                        data[inp.name] = inp.checked ? 'true' : 'false';
+                    } else {
+                        data[inp.name] = inp.value;
+                    }
+                }
+                document.getElementById('configStatus').innerHTML = '<span style="color:#0078d4;">Saving...</span>';
+                $.ajax({
+                    url: (function(){ var p = window.location.pathname; if (p.indexOf('/PyScript/') >= 0) p = p.replace('/PyScript/', '/PyScriptForm/'); return p; })(),
+                    type: 'POST',
+                    data: data,
+                    success: function(resp) {
+                        try {
+                            var r = JSON.parse(resp);
+                            document.getElementById('configStatus').innerHTML = r.success
+                                ? '<span style="color:#107c10;">Configuration saved! Changes take effect on next page load.</span>'
+                                : '<span style="color:red;">' + (r.message || 'Error') + '</span>';
+                        } catch(e) {
+                            document.getElementById('configStatus').innerHTML = '<span style="color:red;">Error saving</span>';
+                        }
+                    }
+                });
+            }
+        };
+        // Load config when jQuery is ready
+        (function waitForjQuery() {
+            if (typeof $ !== 'undefined' && typeof $.ajax === 'function') {
+                DashConfig.load();
+            } else {
+                setTimeout(waitForjQuery, 100);
+            }
+        })();
+        </script>
+
+        </div> <!-- end TAB: Dashboard Configuration -->
+
+        <div id="stab-content-templates" class="settings-tab-content">
+
         <!-- Advanced Options Section -->
-        <div class="card">
+        <div class="card" style="margin-bottom:20px;">
             <div class="card-header">
                 <h4>&#9881; Advanced Options</h4>
             </div>
@@ -16893,7 +17238,10 @@ def render_settings_view(user_role):
                 </div>
             </div>
         </div>
-    </div>
+
+        </div> <!-- end TAB: Quick Email Templates -->
+
+    </div> <!-- end settings-view -->
 
     <style>
         .settings-view .card {
